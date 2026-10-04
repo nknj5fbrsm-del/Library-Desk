@@ -1,25 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import type { AudioRef, Entry, LibraryFacet, SortMode } from '../shared/types'
+import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
+import type { AudioRef, Entry } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
 
-export interface CreateEntryInput {
-  title?: string
-  stylePrompt?: string
-  lyrics?: string
-  notes?: string
-  tags?: string[]
-  isPower?: boolean
-  audio?: AudioRef | null
-}
-
-export type UpdateEntryPatch = CreateEntryInput
-
-export interface ListQuery {
-  search: string
-  facet: LibraryFacet
-  sort: SortMode
-}
+export type { CreateEntryInput, ListQuery, UpdateEntryPatch }
 
 interface EntryRow {
   id: string

@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { openDatabase, type AppDatabase } from './db'
+import { registerIpc } from './ipc'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -25,7 +27,12 @@ function createWindow(): void {
   }
 }
 
+let db: AppDatabase | null = null
+
 app.whenReady().then(() => {
+  const userData = app.getPath('userData')
+  db = openDatabase(join(userData, 'library.db'))
+  registerIpc(db, userData)
   createWindow()
 
   app.on('activate', () => {
@@ -35,4 +42,9 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+app.on('will-quit', () => {
+  db?.close()
+  db = null
 })
