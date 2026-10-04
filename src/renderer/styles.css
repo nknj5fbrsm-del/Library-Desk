@@ -86,6 +86,14 @@ select,
   cursor: pointer;
 }
 
+.btn:hover:not(:disabled) {
+  background: var(--bg-sunken);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #34473d;
+}
+
 .btn:disabled {
   cursor: default;
   opacity: 0.55;

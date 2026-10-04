@@ -1,7 +1,7 @@
 # Suno Prompt Library Desk — Design Spec
 
 **Datum:** 2026-10-04  
-**Status:** Freigegeben  
+**Status:** Freigegeben — MVP umgesetzt (2026-10-04)  
 **Produktname:** Library Desk  
 **Repo-/Ordnername:** `suno-prompt-desk`  
 **Pfad:** `~/Desktop/Cursor Projekte/suno-prompt-desk`

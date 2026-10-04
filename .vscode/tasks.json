@@ -20,7 +20,7 @@
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".+",
-          "endsPattern": "ready in|Local:|start electron app"
+          "endsPattern": "start electron app"
         }
       }
     }
