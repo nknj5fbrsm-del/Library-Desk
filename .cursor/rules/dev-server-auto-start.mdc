@@ -1,0 +1,14 @@
+---
+description: Dev-Server Auto-Start für Library Desk
+alwaysApply: true
+---
+
+# Dev-Server Auto-Start
+
+Beim Öffnen dieses Workspaces startet der Electron-Dev-Server automatisch.
+
+| Projekt | Befehl | Preview |
+|---------|--------|---------|
+| Library Desk | `npm run dev` | Electron-Fenster (kein Browser-URL) |
+
+Workspace nur als Ordner `suno-prompt-desk` öffnen (nicht den Elternordner „Cursor Projekte“).
