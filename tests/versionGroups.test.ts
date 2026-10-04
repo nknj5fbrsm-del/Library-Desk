@@ -15,6 +15,7 @@ function entry(
     createdAt: 0,
     updatedAt: 0,
     audio: null,
+    cover: null,
     ...partial,
   }
 }

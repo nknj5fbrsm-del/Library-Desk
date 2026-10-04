@@ -22,6 +22,7 @@ export interface ExportEntryRow {
   createdAt: string
   updatedAt: string
   audio: ExportAudio
+  cover: { included: false; originalName: string } | null
 }
 
 function invalid(detail: string): never {
@@ -55,6 +56,9 @@ export function entryToExportRow(entry: Entry): ExportEntryRow {
     createdAt: new Date(entry.createdAt).toISOString(),
     updatedAt: new Date(entry.updatedAt).toISOString(),
     audio: exportAudio(entry.audio),
+    cover: entry.cover
+      ? { included: false as const, originalName: entry.cover.originalName }
+      : null,
   }
 }
 
@@ -126,6 +130,7 @@ function parseEntry(raw: unknown): Entry {
     createdAt: requireIso(raw.createdAt, 'createdAt'),
     updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
     audio: parseAudio(raw.audio),
+    cover: null,
   }
 }
 

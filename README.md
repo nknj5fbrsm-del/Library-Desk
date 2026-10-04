@@ -26,9 +26,15 @@ npm test
 
 Vitest läuft unter Electron (`ELECTRON_RUN_AS_NODE=1`), damit `better-sqlite3` dieselbe ABI wie die App nutzt. Watch-Modus: `npm run test:watch`.
 
-## Export
+## Export / Import
 
-Export schreibt `.spd.json` mit `format: "suno-prompt-desk"` und `formatVersion: 1`. URL-Audio wird vollständig übernommen, lokale Audiodateien nur als Metadaten ohne Binärdaten. Schema und Import-Regeln: Spec, Abschnitt 8.
+Export schreibt `.spd.json` mit `format: "suno-prompt-desk"` und `formatVersion: 1`. URL-Audio wird vollständig übernommen, lokale Audiodateien nur als Metadaten ohne Binärdaten. Schema: Spec, Abschnitt 8.
+
+Import akzeptiert:
+- Desk-Bundle (`format: "suno-prompt-desk"`)
+- **Suno-Mastermind**-JSON (Array von Bibliothekseinträgen, z. B. Export aus der Mastermind-Bibliothek)
+
+Nicht mappbare Mastermind-Felder (Pipeline, Mashup, Rating …) werden verworfen. Einträge ohne Style und ohne Lyrics werden übersprungen. Cover-Data-URLs werden nach `userData/covers/` kopiert und in Liste/Detail angezeigt.
 
 ## Spec und Plan
 

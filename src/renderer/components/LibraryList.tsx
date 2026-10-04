@@ -1,5 +1,6 @@
 import { groupEntriesForDisplay } from '@shared/versionGroups'
 import type { Entry } from '@shared/types'
+import { CoverThumb } from '@renderer/components/CoverThumb'
 
 interface LibraryListProps {
   entries: Entry[]
@@ -59,6 +60,7 @@ export function LibraryList({
                   aria-current={active && !showChips ? 'true' : undefined}
                   onClick={() => onSelect(group.representative.id)}
                 >
+                  <CoverThumb entry={group.representative} size="list" />
                   <span className="group-title">{group.representative.title}</span>
                   {isPower ? <span className="power-mark">Power</span> : null}
                   {hasAudio ? (

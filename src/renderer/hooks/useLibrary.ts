@@ -128,7 +128,9 @@ export function useLibrary() {
       if (!result) return
       await reload()
       setEditorRevision((current) => current + 1)
-      setNotice(`Import: ${result.created} neu, ${result.updated} aktualisiert`)
+      const skipped =
+        result.skipped > 0 ? `, ${result.skipped} übersprungen` : ''
+      setNotice(`Import: ${result.created} neu, ${result.updated} aktualisiert${skipped}`)
     })
   }, [reload, run])
 

@@ -23,6 +23,7 @@ function entry(overrides: Partial<Entry> = {}): Entry {
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: null,
+    cover: null,
     ...overrides,
   }
 }
@@ -52,6 +53,7 @@ describe('export format', () => {
       createdAt: '2026-10-04T11:00:00.000Z',
       updatedAt: '2026-10-04T11:30:00.000Z',
       audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
+      cover: null,
     })
   })
 

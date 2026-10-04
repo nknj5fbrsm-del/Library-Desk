@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
-import type { AudioRef, Entry } from '../shared/types'
+import type { AudioRef, CoverRef, Entry } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
 
@@ -19,6 +19,7 @@ interface EntryRow {
   created_at: number
   updated_at: number
   audio_json: string | null
+  cover_json: string | null
 }
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -40,6 +41,7 @@ function rowToEntry(row: EntryRow): Entry {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     audio: row.audio_json ? (JSON.parse(row.audio_json) as AudioRef) : null,
+    cover: row.cover_json ? (JSON.parse(row.cover_json) as CoverRef) : null,
   }
 }
 
@@ -56,7 +58,7 @@ export function getEntry(db: AppDatabase, id: string): Entry | null {
   return row ? rowToEntry(row) : null
 }
 
-function insertEntry(
+function insertGenerated(
   db: AppDatabase,
   fields: {
     groupId: string
@@ -68,6 +70,7 @@ function insertEntry(
     tags: string[]
     isPower: boolean
     audio: AudioRef | null
+    cover: CoverRef | null
   },
 ): Entry {
   const id = randomUUID()
@@ -75,8 +78,8 @@ function insertEntry(
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
-      tags_json, is_power, created_at, updated_at, audio_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      tags_json, is_power, created_at, updated_at, audio_json, cover_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.groupId,
@@ -90,12 +93,62 @@ function insertEntry(
     timestamp,
     timestamp,
     fields.audio ? JSON.stringify(fields.audio) : null,
+    fields.cover ? JSON.stringify(fields.cover) : null,
   )
   return requireEntry(db, id)
 }
 
+export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'updated' {
+  const existing = getEntry(db, entry.id)
+  if (existing) {
+    db.prepare(
+      `UPDATE entries SET
+        group_id = ?, version = ?, title = ?, style_prompt = ?, lyrics = ?, notes = ?,
+        tags_json = ?, is_power = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?
+      WHERE id = ?`,
+    ).run(
+      entry.groupId,
+      entry.version,
+      entry.title,
+      entry.stylePrompt,
+      entry.lyrics,
+      entry.notes,
+      JSON.stringify(entry.tags),
+      entry.isPower ? 1 : 0,
+      entry.createdAt,
+      entry.updatedAt,
+      entry.audio ? JSON.stringify(entry.audio) : null,
+      entry.cover ? JSON.stringify(entry.cover) : null,
+      entry.id,
+    )
+    return 'updated'
+  }
+
+  db.prepare(
+    `INSERT INTO entries (
+      id, group_id, version, title, style_prompt, lyrics, notes,
+      tags_json, is_power, created_at, updated_at, audio_json, cover_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    entry.id,
+    entry.groupId,
+    entry.version,
+    entry.title,
+    entry.stylePrompt,
+    entry.lyrics,
+    entry.notes,
+    JSON.stringify(entry.tags),
+    entry.isPower ? 1 : 0,
+    entry.createdAt,
+    entry.updatedAt,
+    entry.audio ? JSON.stringify(entry.audio) : null,
+    entry.cover ? JSON.stringify(entry.cover) : null,
+  )
+  return 'created'
+}
+
 export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
-  return insertEntry(db, {
+  return insertGenerated(db, {
     groupId: randomUUID(),
     version: 1,
     title: normalizeTitle(input.title ?? ''),
@@ -105,16 +158,18 @@ export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
     tags: normalizeTags(input.tags),
     isPower: input.isPower ?? false,
     audio: input.audio ?? null,
+    cover: input.cover ?? null,
   })
 }
 
 export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch): Entry {
   const existing = requireEntry(db, id)
   const audio = patch.audio !== undefined ? patch.audio : existing.audio
+  const cover = patch.cover !== undefined ? patch.cover : existing.cover
   db.prepare(
     `UPDATE entries SET
       title = ?, style_prompt = ?, lyrics = ?, notes = ?, tags_json = ?,
-      is_power = ?, updated_at = ?, audio_json = ?
+      is_power = ?, updated_at = ?, audio_json = ?, cover_json = ?
     WHERE id = ?`,
   ).run(
     patch.title !== undefined ? normalizeTitle(patch.title) : existing.title,
@@ -125,6 +180,7 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     (patch.isPower !== undefined ? patch.isPower : existing.isPower) ? 1 : 0,
     Date.now(),
     audio ? JSON.stringify(audio) : null,
+    cover ? JSON.stringify(cover) : null,
     id,
   )
   return requireEntry(db, id)
@@ -175,6 +231,7 @@ function copiedContent(source: Entry): {
   tags: string[]
   isPower: boolean
   audio: AudioRef | null
+  cover: CoverRef | null
 } {
   return {
     title: source.title,
@@ -184,12 +241,13 @@ function copiedContent(source: Entry): {
     tags: source.tags,
     isPower: source.isPower,
     audio: source.audio,
+    cover: source.cover,
   }
 }
 
 export function duplicateEntry(db: AppDatabase, id: string): Entry {
   const source = requireEntry(db, id)
-  return insertEntry(db, {
+  return insertGenerated(db, {
     groupId: randomUUID(),
     version: 1,
     ...copiedContent(source),
@@ -203,7 +261,7 @@ export function createVersion(db: AppDatabase, id: string): Entry {
       'SELECT COALESCE(MAX(version), 0) AS maxVersion FROM entries WHERE group_id = ?',
     )
     .get(source.groupId)
-  return insertEntry(db, {
+  return insertGenerated(db, {
     groupId: source.groupId,
     version: (row?.maxVersion ?? 0) + 1,
     ...copiedContent(source),

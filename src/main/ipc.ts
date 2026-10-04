@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AudioRef } from '../shared/types'
-import { buildExportBundle, parseExportBundle } from '../shared/exportFormat'
+import { buildExportBundle } from '../shared/exportFormat'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
 import {
   copyLocalAudio,
@@ -10,6 +10,13 @@ import {
   localPlaybackUrl,
   resolveLocalAudioFile,
 } from './audioFs'
+import {
+  copyCoverBetweenEntries,
+  coverDisplayUrl,
+  coverRootFor,
+  deleteEntryCover,
+  resolveLocalCoverFile,
+} from './coverFs'
 import type { AppDatabase } from './db'
 import {
   createEntry,
@@ -20,11 +27,11 @@ import {
   listEntries,
   updateEntry,
 } from './entriesRepo'
-import { importBundle } from './importExport'
+import { importLibraryJson } from './importExport'
 import { getSetting, setSetting } from './settingsRepo'
 
 const LIBRARY_FILTERS = [
-  { name: 'Suno Prompt Desk', extensions: ['spd.json', 'json'] },
+  { name: 'Bibliothek (Desk / Mastermind)', extensions: ['spd.json', 'json'] },
 ]
 
 const AUDIO_FILTERS = [
@@ -71,22 +78,44 @@ function assertHttpUrl(url: string): string {
 
 export function registerIpc(db: AppDatabase, userData: string): void {
   const audioRoot = join(userData, 'audio')
+  const coverRoot = coverRootFor(userData)
 
-  function copyOwnedLocalAudio(sourceId: string, createdId: string) {
+  function copyOwnedMedia(sourceId: string, createdId: string) {
+    let created = getEntry(db, createdId)
     const source = getEntry(db, sourceId)
-    const created = getEntry(db, createdId)
     if (!source || !created) throw new Error(`Entry not found: ${sourceId}`)
-    if (source.audio?.kind !== 'local') return created
-    const filePath = resolveLocalAudioFile(audioRoot, source.id, source.audio.relativePath)
-    if (!existsSync(filePath)) return updateEntry(db, created.id, { audio: null })
-    const copied = copyLocalAudio(userData, created.id, filePath)
-    return updateEntry(db, created.id, {
-      audio: {
-        kind: 'local',
-        relativePath: copied.relativePath,
-        originalName: source.audio.originalName,
-      },
-    })
+
+    if (source.audio?.kind === 'local') {
+      const filePath = resolveLocalAudioFile(audioRoot, source.id, source.audio.relativePath)
+      if (!existsSync(filePath)) {
+        created = updateEntry(db, created.id, { audio: null })
+      } else {
+        const copied = copyLocalAudio(userData, created.id, filePath)
+        created = updateEntry(db, created.id, {
+          audio: {
+            kind: 'local',
+            relativePath: copied.relativePath,
+            originalName: source.audio.originalName,
+          },
+        })
+      }
+    }
+
+    if (source.cover) {
+      try {
+        const copied = copyCoverBetweenEntries(
+          userData,
+          source.id,
+          created.id,
+          source.cover.relativePath,
+        )
+        created = updateEntry(db, created.id, { cover: copied })
+      } catch {
+        created = updateEntry(db, created.id, { cover: null })
+      }
+    }
+
+    return created
   }
 
   ipcMain.handle('entries:list', (_event, query: ListQuery) => listEntries(db, query))
@@ -98,14 +127,15 @@ export function registerIpc(db: AppDatabase, userData: string): void {
   ipcMain.handle('entries:delete', (_event, id: string) => {
     deleteEntry(db, id)
     deleteEntryAudio(userData, id)
+    deleteEntryCover(userData, id)
   })
   ipcMain.handle('entries:duplicate', (_event, id: string) => {
     const created = duplicateEntry(db, id)
-    return copyOwnedLocalAudio(id, created.id)
+    return copyOwnedMedia(id, created.id)
   })
   ipcMain.handle('entries:createVersion', (_event, id: string) => {
     const created = createVersion(db, id)
-    return copyOwnedLocalAudio(id, created.id)
+    return copyOwnedMedia(id, created.id)
   })
 
   ipcMain.handle('audio:attachLocal', async (_event, entryId: string) => {
@@ -143,6 +173,14 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     return localPlaybackUrl(entryId, entry.audio.relativePath)
   })
 
+  ipcMain.handle('cover:resolveUrl', (_event, entryId: string) => {
+    const entry = getEntry(db, entryId)
+    if (!entry?.cover) return null
+    const filePath = resolveLocalCoverFile(coverRoot, entryId, entry.cover.relativePath)
+    if (!existsSync(filePath)) return null
+    return coverDisplayUrl(entryId, entry.cover.relativePath)
+  })
+
   ipcMain.handle('io:exportLibrary', async () => {
     const picked = await saveFile({
       title: 'Bibliothek exportieren',
@@ -157,13 +195,13 @@ export function registerIpc(db: AppDatabase, userData: string): void {
 
   ipcMain.handle('io:importLibrary', async () => {
     const picked = await openFile({
-      title: 'Bibliothek importieren',
+      title: 'Bibliothek importieren (Desk oder Mastermind)',
       filters: LIBRARY_FILTERS,
       properties: ['openFile'],
     })
     if (picked.canceled || picked.filePaths.length === 0) return null
     const raw: unknown = JSON.parse(readFileSync(picked.filePaths[0], 'utf8'))
-    return importBundle(db, parseExportBundle(raw))
+    return importLibraryJson(db, userData, raw)
   })
 
   ipcMain.handle('settings:get', (_event, key: string) => getSetting(db, key))

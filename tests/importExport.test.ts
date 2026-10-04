@@ -25,6 +25,7 @@ function bundleEntry(overrides: Partial<Entry> = {}): Entry {
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
+    cover: null,
     ...overrides,
   }
 }
@@ -68,7 +69,7 @@ describe('importBundle', () => {
     const incoming = bundleEntry()
     const result = importBundle(db, bundleFrom([incoming]))
 
-    expect(result).toEqual({ created: 1, updated: 0 })
+    expect(result).toEqual({ created: 1, updated: 0, skipped: 0 })
     expect(getEntry(db, incoming.id)).toEqual(incoming)
   })
 
@@ -108,7 +109,7 @@ describe('importBundle', () => {
 
     const result = importBundle(db, bundleFrom([replacement, fresh]))
 
-    expect(result).toEqual({ created: 1, updated: 1 })
+    expect(result).toEqual({ created: 1, updated: 1, skipped: 0 })
     expect(getEntry(db, existing.id)).toEqual(replacement)
     expect(getEntry(db, fresh.id)?.title).toBe('Frisch')
     const rows = db.prepare('SELECT COUNT(*) AS n FROM entries').get() as { n: number }
@@ -159,7 +160,7 @@ describe('importBundle', () => {
 
     const result = importBundle(db, parseExportBundle(JSON.parse(readFileSync(filePath, 'utf8'))))
 
-    expect(result).toEqual({ created: 2, updated: 0 })
+    expect(result).toEqual({ created: 2, updated: 0, skipped: 0 })
     expect(getEntry(db, urlEntry.id)).toMatchObject({
       title: 'Stream',
       stylePrompt: 'velvet',
@@ -183,8 +184,8 @@ describe('importBundle', () => {
 
   it('counts a second import of the same ids as updates', () => {
     const incoming = bundleEntry({ audio: null })
-    expect(importBundle(db, bundleFrom([incoming]))).toEqual({ created: 1, updated: 0 })
-    expect(importBundle(db, bundleFrom([incoming]))).toEqual({ created: 0, updated: 1 })
+    expect(importBundle(db, bundleFrom([incoming]))).toEqual({ created: 1, updated: 0, skipped: 0 })
+    expect(importBundle(db, bundleFrom([incoming]))).toEqual({ created: 0, updated: 1, skipped: 0 })
     expect(getEntry(db, incoming.id)?.createdAt).toBe(CREATED)
     expect(getEntry(db, incoming.id)?.updatedAt).toBe(UPDATED)
   })

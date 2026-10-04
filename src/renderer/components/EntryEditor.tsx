@@ -9,6 +9,7 @@ import { applyExternalEntry } from '@shared/editorDraft'
 import type { Entry } from '@shared/types'
 import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { CoverThumb } from '@renderer/components/CoverThumb'
 import { MiniPlayer } from '@renderer/components/MiniPlayer'
 
 const SAVE_DELAY_MS = 400
@@ -440,23 +441,30 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   return (
     <div className="editor">
       <div className="editor-head">
-        <input
-          className="title-input"
-          aria-label="Titel"
-          value={draft.title}
-          placeholder="Ohne Titel"
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => patchDraft({ title: event.target.value })}
-        />
-        <label className="power-toggle">
+        {entry.cover ? (
+          <div className="cover-panel" aria-label="Cover">
+            <CoverThumb entry={entry} size="detail" />
+          </div>
+        ) : null}
+        <div className="editor-head-main">
           <input
-            type="checkbox"
-            checked={draft.isPower}
-            onChange={(event) => patchDraft({ isPower: event.target.checked })}
+            className="title-input"
+            aria-label="Titel"
+            value={draft.title}
+            placeholder="Ohne Titel"
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => patchDraft({ title: event.target.value })}
           />
-          Power
-        </label>
+          <label className="power-toggle">
+            <input
+              type="checkbox"
+              checked={draft.isPower}
+              onChange={(event) => patchDraft({ isPower: event.target.checked })}
+            />
+            Power
+          </label>
+        </div>
       </div>
       <p className="meta">
         Version {entry.version}

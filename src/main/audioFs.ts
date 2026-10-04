@@ -1,7 +1,7 @@
 import { copyFileSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 
-const ENTRY_ID = /^[A-Za-z0-9-]{1,80}$/
+const ENTRY_ID = /^[A-Za-z0-9._-]{1,128}$/
 
 export function audioRootFor(userData: string): string {
   return join(userData, 'audio')

@@ -1,4 +1,4 @@
-import type { AudioRef, Entry, LibraryFacet, SortMode } from './types'
+import type { AudioRef, CoverRef, Entry, ImportLibraryResult, LibraryFacet, SortMode } from './types'
 
 export interface CreateEntryInput {
   title?: string
@@ -8,6 +8,7 @@ export interface CreateEntryInput {
   tags?: string[]
   isPower?: boolean
   audio?: AudioRef | null
+  cover?: CoverRef | null
 }
 
 export type UpdateEntryPatch = CreateEntryInput
@@ -34,9 +35,12 @@ export interface DeskApi {
     clear(entryId: string): Promise<Entry>
     resolveLocalUrl(entryId: string): Promise<string | null>
   }
+  cover: {
+    resolveUrl(entryId: string): Promise<string | null>
+  }
   io: {
     exportLibrary(): Promise<{ filePath: string } | null>
-    importLibrary(): Promise<{ created: number; updated: number } | null>
+    importLibrary(): Promise<ImportLibraryResult | null>
   }
   settings: {
     get(key: string): Promise<string | null>

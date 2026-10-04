@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS entries (
   is_power INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
-  audio_json TEXT
+  audio_json TEXT,
+  cover_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -35,4 +36,11 @@ export function openDatabase(dbPath: string): AppDatabase {
 
 export function migrate(db: AppDatabase): void {
   db.exec(SCHEMA)
+  const columns = db
+    .prepare<[], { name: string }>('PRAGMA table_info(entries)')
+    .all()
+    .map((column) => column.name)
+  if (!columns.includes('cover_json')) {
+    db.exec('ALTER TABLE entries ADD COLUMN cover_json TEXT')
+  }
 }

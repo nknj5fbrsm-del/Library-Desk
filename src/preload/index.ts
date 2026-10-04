@@ -20,6 +20,9 @@ const desk: DeskApi = {
     clear: (entryId: string) => ipcRenderer.invoke('audio:clear', entryId),
     resolveLocalUrl: (entryId: string) => ipcRenderer.invoke('audio:resolveLocalUrl', entryId),
   },
+  cover: {
+    resolveUrl: (entryId: string) => ipcRenderer.invoke('cover:resolveUrl', entryId),
+  },
   io: {
     exportLibrary: () => ipcRenderer.invoke('io:exportLibrary'),
     importLibrary: () => ipcRenderer.invoke('io:importLibrary'),

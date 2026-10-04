@@ -2,6 +2,11 @@ export type AudioRef =
   | { kind: 'local'; relativePath: string; originalName: string }
   | { kind: 'url'; href: string; label?: string }
 
+export interface CoverRef {
+  relativePath: string
+  originalName: string
+}
+
 export interface Entry {
   id: string
   groupId: string
@@ -15,6 +20,7 @@ export interface Entry {
   createdAt: number
   updatedAt: number
   audio: AudioRef | null
+  cover: CoverRef | null
 }
 
 export type LibraryFacet = 'all' | 'power' | { tag: string }
@@ -31,4 +37,10 @@ export interface DeskExportBundle {
   formatVersion: 1
   exportedAt: string
   entries: unknown[]
+}
+
+export interface ImportLibraryResult {
+  created: number
+  updated: number
+  skipped: number
 }
