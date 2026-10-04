@@ -154,6 +154,27 @@ describe('export format', () => {
     expect(parsed.entries[0]?.createdAt).toBe(CREATED)
   })
 
+  it('normalizes empty and whitespace-only titles to Ohne Titel on import', () => {
+    const base = {
+      format: 'suno-prompt-desk' as const,
+      formatVersion: 1 as const,
+      exportedAt: '2026-10-04T12:00:00.000Z',
+    }
+    const row = entryToExportRow(entry())
+
+    const emptyTitle = parseExportBundle({
+      ...base,
+      entries: [{ ...row, title: '' }],
+    })
+    expect(emptyTitle.entries[0]?.title).toBe('Ohne Titel')
+
+    const whitespaceTitle = parseExportBundle({
+      ...base,
+      entries: [{ ...row, title: '   \t  ' }],
+    })
+    expect(whitespaceTitle.entries[0]?.title).toBe('Ohne Titel')
+  })
+
   it('roundtrips empty style, lyrics, and notes', () => {
     const source = entry({
       stylePrompt: '',

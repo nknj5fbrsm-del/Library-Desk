@@ -1,4 +1,5 @@
 import type { AudioRef, DeskExportBundle, Entry } from './types'
+import { normalizeTitle } from './title'
 
 export interface ExportAudioLocal {
   kind: 'local'
@@ -116,7 +117,7 @@ function parseEntry(raw: unknown): Entry {
     id: requireNonEmpty(raw.id, 'id'),
     groupId: requireNonEmpty(raw.groupId, 'groupId'),
     version: requireVersion(raw.version),
-    title: requireText(raw.title, 'title'),
+    title: normalizeTitle(requireText(raw.title, 'title')),
     stylePrompt: requireText(raw.stylePrompt, 'stylePrompt'),
     lyrics: requireText(raw.lyrics, 'lyrics'),
     notes: requireText(raw.notes, 'notes'),

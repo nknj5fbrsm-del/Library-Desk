@@ -115,6 +115,23 @@ describe('importBundle', () => {
     expect(rows.n).toBe(2)
   })
 
+  it('drops local audio even when entry bypasses parseExportBundle', () => {
+    const bypassed = bundleEntry({
+      id: '99999999-9999-4999-8999-999999999999',
+      title: 'Bypass',
+      audio: {
+        kind: 'local',
+        relativePath: 'audio/evil/demo.mp3',
+        originalName: 'demo.mp3',
+      },
+    })
+
+    importBundle(db, { ...bundleFrom([bypassed]), entries: [bypassed] })
+
+    expect(getEntry(db, bypassed.id)?.audio).toBeNull()
+    expect(getEntry(db, bypassed.id)?.title).toBe('Bypass')
+  })
+
   it('counts a second import of the same ids as updates', () => {
     const incoming = bundleEntry({ audio: null })
     expect(importBundle(db, bundleFrom([incoming]))).toEqual({ created: 1, updated: 0 })

@@ -6,6 +6,13 @@ function audioJson(audio: Entry['audio']): string | null {
   return audio ? JSON.stringify(audio) : null
 }
 
+function entryForWrite(entry: Entry): Entry {
+  if (entry.audio?.kind === 'local') {
+    return { ...entry, audio: null }
+  }
+  return entry
+}
+
 function insertEntry(db: AppDatabase, entry: Entry): void {
   db.prepare(
     `INSERT INTO entries (
@@ -58,7 +65,8 @@ export function importBundle(
   let updated = 0
 
   const apply = db.transaction((entries: Entry[]) => {
-    for (const entry of entries) {
+    for (const raw of entries) {
+      const entry = entryForWrite(raw)
       if (getEntry(db, entry.id)) {
         updateEntry(db, entry)
         updated += 1
