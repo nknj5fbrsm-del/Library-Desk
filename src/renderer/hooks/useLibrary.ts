@@ -38,6 +38,7 @@ export function useLibrary() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [settingsReady, setSettingsReady] = useState(false)
+  const [editorRevision, setEditorRevision] = useState(0)
   const requestId = useRef(0)
   const queryRef = useRef(query)
   const sortTouched = useRef(false)
@@ -126,6 +127,7 @@ export function useLibrary() {
       const result = await getDesk().io.importLibrary()
       if (!result) return
       await reload()
+      setEditorRevision((current) => current + 1)
       setNotice(`Import: ${result.created} neu, ${result.updated} aktualisiert`)
     })
   }, [reload, run])
@@ -204,6 +206,7 @@ export function useLibrary() {
     busy,
     error,
     notice,
+    editorRevision,
     reload,
     createNew,
     importLibrary,

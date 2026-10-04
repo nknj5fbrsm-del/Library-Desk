@@ -116,7 +116,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
       filters: AUDIO_FILTERS,
       properties: ['openFile'],
     })
-    if (picked.canceled || picked.filePaths.length === 0) return existing
+    if (picked.canceled || picked.filePaths.length === 0) return null
     const copied = copyLocalAudio(userData, entryId, picked.filePaths[0])
     return updateEntry(db, entryId, {
       audio: { kind: 'local', relativePath: copied.relativePath, originalName: copied.originalName },

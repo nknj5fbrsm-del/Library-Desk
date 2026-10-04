@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { Entry } from '../shared/types'
 import type { CreateEntryInput, DeskApi, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
 
 const desk: DeskApi = {
@@ -12,7 +13,8 @@ const desk: DeskApi = {
     createVersion: (id: string) => ipcRenderer.invoke('entries:createVersion', id),
   },
   audio: {
-    attachLocal: (entryId: string) => ipcRenderer.invoke('audio:attachLocal', entryId),
+    attachLocal: (entryId: string): Promise<Entry | null> =>
+      ipcRenderer.invoke('audio:attachLocal', entryId),
     setUrl: (entryId: string, href: string, label?: string) =>
       ipcRenderer.invoke('audio:setUrl', entryId, href, label),
     clear: (entryId: string) => ipcRenderer.invoke('audio:clear', entryId),

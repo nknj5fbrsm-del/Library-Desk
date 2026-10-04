@@ -5,6 +5,7 @@ import {
   formatCopyStyle,
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
+import { applyExternalEntry } from '@shared/editorDraft'
 import type { Entry } from '@shared/types'
 import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -122,13 +123,14 @@ function AudioPanel({
     setUrlDraft(value)
   }
 
-  async function runAudio(action: () => Promise<Entry>): Promise<boolean> {
+  async function runAudio(action: () => Promise<Entry | null>): Promise<boolean> {
     if (audioBusyRef.current) return false
     audioBusyRef.current = true
     setAudioBusy(true)
     setAudioNote(null)
     try {
       const updated = await action()
+      if (!updated) return false
       if (entryIdRef.current === updated.id) onAudioChangeRef.current(updated)
       return true
     } catch (cause) {
@@ -253,6 +255,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   const tagInputRef = useRef('')
   const entryIdRef = useRef(entry.id)
   const dirtyRef = useRef(false)
+  const savingRef = useRef(false)
   const actingRef = useRef(false)
   const mountedRef = useRef(true)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -315,6 +318,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       isPower: sent.isPower,
     }
     if (mountedRef.current) setSaveState('saving')
+    savingRef.current = true
     try {
       const saved = await onUpdateRef.current(id, patch)
       if (!mountedRef.current || entryIdRef.current !== id) return
@@ -328,6 +332,8 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       dirtyRef.current = true
       if (mountedRef.current) setSaveState('error')
       throw cause
+    } finally {
+      savingRef.current = false
     }
   }
 
@@ -390,6 +396,17 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       void flushRef.current().catch(() => undefined)
     }
   }, [])
+
+  useEffect(() => {
+    const next = applyExternalEntry(
+      draftRef.current,
+      toDraft(entry),
+      dirtyRef.current || savingRef.current,
+    )
+    if (next === draftRef.current) return
+    draftRef.current = next
+    setDraft(next)
+  }, [entry])
 
   async function runStructural(action: (id: string) => Promise<void>): Promise<void> {
     if (actingRef.current) return

@@ -104,8 +104,26 @@ export default function App(): JSX.Element {
             await library.createNew()
           })()
         }}
-        onImport={() => void library.importLibrary()}
-        onExport={() => void library.exportLibrary()}
+        onImport={() => {
+          void (async () => {
+            try {
+              await editorRef.current?.flush()
+            } catch {
+              return
+            }
+            await library.importLibrary()
+          })()
+        }}
+        onExport={() => {
+          void (async () => {
+            try {
+              await editorRef.current?.flush()
+            } catch {
+              return
+            }
+            await library.exportLibrary()
+          })()
+        }}
       />
       <div className="split">
         <LibraryList
@@ -123,7 +141,7 @@ export default function App(): JSX.Element {
                 <p className="muted">Im aktuellen Filter nicht sichtbar.</p>
               ) : null}
               <EntryEditor
-                key={library.selectedEntry.id}
+                key={`${library.selectedEntry.id}:${library.editorRevision}`}
                 ref={editorRef}
                 entry={library.selectedEntry}
                 busy={library.busy}

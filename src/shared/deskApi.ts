@@ -29,7 +29,7 @@ export interface DeskApi {
     createVersion(id: string): Promise<Entry>
   }
   audio: {
-    attachLocal(entryId: string): Promise<Entry>
+    attachLocal(entryId: string): Promise<Entry | null>
     setUrl(entryId: string, href: string, label?: string): Promise<Entry>
     clear(entryId: string): Promise<Entry>
     resolveLocalUrl(entryId: string): Promise<string | null>
