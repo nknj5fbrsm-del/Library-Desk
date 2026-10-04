@@ -1,0 +1,145 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getDesk } from '@renderer/api'
+import type { ListQuery } from '@shared/deskApi'
+import type { Entry, LibraryFacet, SortMode } from '@shared/types'
+
+function collectTags(entries: Entry[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const entry of entries) {
+    for (const tag of entry.tags) {
+      const key = tag.toLocaleLowerCase('de')
+      if (!byKey.has(key)) byKey.set(key, tag)
+    }
+  }
+  return Array.from(byKey.values()).sort((a, b) =>
+    a.localeCompare(b, 'de', { sensitivity: 'base' }),
+  )
+}
+
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : 'Bibliothek konnte nicht geladen werden.'
+}
+
+export function useLibrary() {
+  const [query, setQuery] = useState<ListQuery>({
+    search: '',
+    facet: 'all',
+    sort: 'newest',
+  })
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [catalog, setCatalog] = useState<Entry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const requestId = useRef(0)
+  const queryRef = useRef(query)
+  queryRef.current = query
+
+  const load = useCallback(async (activeQuery: ListQuery, preferId?: string) => {
+    const id = ++requestId.current
+    const desk = getDesk()
+    const [listed, all] = await Promise.all([
+      desk.entries.list(activeQuery),
+      desk.entries.list({ search: '', facet: 'all', sort: 'title' }),
+    ])
+    if (id !== requestId.current) return
+    setEntries(listed)
+    setCatalog(all)
+    setSelectedId((current) => {
+      const next = preferId ?? current
+      if (next && all.some((entry) => entry.id === next)) return next
+      return null
+    })
+    setError(null)
+  }, [])
+
+  const reload = useCallback(async () => {
+    await load(queryRef.current)
+  }, [load])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    load(query)
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(errorMessage(cause))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+      requestId.current += 1
+    }
+  }, [load, query])
+
+  const run = useCallback(async (action: () => Promise<void>) => {
+    setBusy(true)
+    setNotice(null)
+    try {
+      await action()
+    } catch (cause: unknown) {
+      setError(errorMessage(cause))
+    } finally {
+      setBusy(false)
+    }
+  }, [])
+
+  const createNew = useCallback(() => {
+    return run(async () => {
+      const created = await getDesk().entries.create({})
+      await load(queryRef.current, created.id)
+      setSelectedId(created.id)
+    })
+  }, [load, run])
+
+  const importLibrary = useCallback(() => {
+    return run(async () => {
+      const result = await getDesk().io.importLibrary()
+      if (!result) return
+      await load(queryRef.current)
+      setNotice(`Import: ${result.created} erstellt, ${result.updated} aktualisiert.`)
+    })
+  }, [load, run])
+
+  const exportLibrary = useCallback(() => {
+    return run(async () => {
+      const result = await getDesk().io.exportLibrary()
+      if (!result) return
+      setNotice('Bibliothek exportiert.')
+    })
+  }, [run])
+
+  const selectedEntry =
+    entries.find((entry) => entry.id === selectedId) ??
+    catalog.find((entry) => entry.id === selectedId) ??
+    null
+
+  return {
+    query,
+    setSearch: (search: string) => {
+      setNotice(null)
+      setQuery((current) => ({ ...current, search }))
+    },
+    setFacet: (facet: LibraryFacet) => {
+      setNotice(null)
+      setQuery((current) => ({ ...current, facet }))
+    },
+    setSort: (sort: SortMode) => setQuery((current) => ({ ...current, sort })),
+    selectedId,
+    selectedEntry,
+    select: (id: string) => setSelectedId(id),
+    entries,
+    tags: collectTags(catalog),
+    loading,
+    busy,
+    error,
+    notice,
+    reload,
+    createNew,
+    importLibrary,
+    exportLibrary,
+  }
+}
