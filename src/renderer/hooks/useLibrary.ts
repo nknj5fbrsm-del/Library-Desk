@@ -20,6 +20,10 @@ function errorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : 'Bibliothek konnte nicht geladen werden.'
 }
 
+function isSortMode(value: string | null): value is SortMode {
+  return value === 'newest' || value === 'title' || value === 'updated'
+}
+
 export function useLibrary() {
   const [query, setQuery] = useState<ListQuery>({
     search: '',
@@ -33,8 +37,10 @@ export function useLibrary() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [settingsReady, setSettingsReady] = useState(false)
   const requestId = useRef(0)
   const queryRef = useRef(query)
+  const sortTouched = useRef(false)
   queryRef.current = query
 
   const load = useCallback(async (activeQuery: ListQuery, preferId?: string) => {
@@ -61,6 +67,26 @@ export function useLibrary() {
 
   useEffect(() => {
     let cancelled = false
+    void (async () => {
+      try {
+        const stored = await getDesk().settings.get('sortMode')
+        if (!cancelled && !sortTouched.current && isSortMode(stored)) {
+          setQuery((current) => (current.sort === stored ? current : { ...current, sort: stored }))
+        }
+      } catch {
+        // Default-Sortierung bleibt, die Bibliothek lädt trotzdem.
+      } finally {
+        if (!cancelled) setSettingsReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!settingsReady) return
+    let cancelled = false
     setLoading(true)
     load(query)
       .catch((cause: unknown) => {
@@ -73,7 +99,7 @@ export function useLibrary() {
       cancelled = true
       requestId.current += 1
     }
-  }, [load, query])
+  }, [load, query, settingsReady])
 
   const run = useCallback(async (action: () => Promise<void>) => {
     setBusy(true)
@@ -99,10 +125,10 @@ export function useLibrary() {
     return run(async () => {
       const result = await getDesk().io.importLibrary()
       if (!result) return
-      await load(queryRef.current)
-      setNotice(`Import: ${result.created} erstellt, ${result.updated} aktualisiert.`)
+      await reload()
+      setNotice(`Import: ${result.created} neu, ${result.updated} aktualisiert`)
     })
-  }, [load, run])
+  }, [reload, run])
 
   const exportLibrary = useCallback(() => {
     return run(async () => {
@@ -164,7 +190,11 @@ export function useLibrary() {
       setNotice(null)
       setQuery((current) => ({ ...current, facet }))
     },
-    setSort: (sort: SortMode) => setQuery((current) => ({ ...current, sort })),
+    setSort: (sort: SortMode) => {
+      sortTouched.current = true
+      setQuery((current) => ({ ...current, sort }))
+      void getDesk().settings.set('sortMode', sort).catch(() => undefined)
+    },
     selectedId,
     selectedEntry,
     select: (id: string) => setSelectedId(id),

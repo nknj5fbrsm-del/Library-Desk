@@ -1,11 +1,11 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openDatabase } from '../src/main/db'
-import { createEntry, getEntry } from '../src/main/entriesRepo'
+import { createEntry, deleteEntry, getEntry, listEntries } from '../src/main/entriesRepo'
 import { importBundle } from '../src/main/importExport'
-import { parseExportBundle } from '../src/shared/exportFormat'
+import { buildExportBundle, parseExportBundle } from '../src/shared/exportFormat'
 import type { Entry } from '../src/shared/types'
 
 const CREATED = Date.parse('2026-10-04T11:00:00.000Z')
@@ -130,6 +130,55 @@ describe('importBundle', () => {
 
     expect(getEntry(db, bypassed.id)?.audio).toBeNull()
     expect(getEntry(db, bypassed.id)?.title).toBe('Bypass')
+  })
+
+  it('roundtrips export json: url audio stays, local audio is dropped', () => {
+    const urlEntry = createEntry(db, {
+      title: 'Stream',
+      stylePrompt: 'velvet',
+      lyrics: 'words',
+      notes: 'note',
+      tags: ['Night'],
+      isPower: true,
+      audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
+    })
+    const localEntry = createEntry(db, {
+      title: 'Lokal',
+      stylePrompt: 'room',
+      lyrics: 'local words',
+      notes: 'file note',
+      tags: ['Day'],
+      audio: { kind: 'local', relativePath: 'audio/x/demo.mp3', originalName: 'demo.mp3' },
+    })
+
+    const filePath = join(dir, 'library.spd.json')
+    writeFileSync(filePath, buildExportBundle(listEntries(db, { search: '', facet: 'all', sort: 'title' })))
+    deleteEntry(db, urlEntry.id)
+    deleteEntry(db, localEntry.id)
+    expect(listEntries(db, { search: '', facet: 'all', sort: 'newest' })).toEqual([])
+
+    const result = importBundle(db, parseExportBundle(JSON.parse(readFileSync(filePath, 'utf8'))))
+
+    expect(result).toEqual({ created: 2, updated: 0 })
+    expect(getEntry(db, urlEntry.id)).toMatchObject({
+      title: 'Stream',
+      stylePrompt: 'velvet',
+      lyrics: 'words',
+      notes: 'note',
+      tags: ['Night'],
+      isPower: true,
+      audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
+    })
+    const restoredLocal = getEntry(db, localEntry.id)
+    expect(restoredLocal?.audio).toBeNull()
+    expect(restoredLocal).toMatchObject({
+      title: 'Lokal',
+      stylePrompt: 'room',
+      lyrics: 'local words',
+      notes: 'file note',
+      tags: ['Day'],
+    })
+    expect(readFileSync(filePath, 'utf8')).not.toContain('audio/x/demo.mp3')
   })
 
   it('counts a second import of the same ids as updates', () => {

@@ -3,6 +3,7 @@ import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor
 import { LibraryList } from '@renderer/components/LibraryList'
 import { Toolbar } from '@renderer/components/Toolbar'
 import { useLibrary } from '@renderer/hooks/useLibrary'
+import { hydrateVolume } from '@renderer/hooks/useMiniPlayer'
 
 function isTextField(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -22,6 +23,10 @@ export default function App(): JSX.Element {
   const filtered =
     library.query.search.trim().length > 0 || library.query.facet !== 'all'
   const selectedVisible = library.entries.some((entry) => entry.id === library.selectedId)
+
+  useEffect(() => {
+    void hydrateVolume()
+  }, [])
 
   useEffect(() => {
     function onKey(event: KeyboardEvent): void {

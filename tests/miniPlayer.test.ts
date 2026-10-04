@@ -87,4 +87,27 @@ describe('useMiniPlayer', () => {
     player.pause()
     expect(player.getMiniPlayerSnapshot().playing).toBe(false)
   })
+
+  it('loads volume from desk.settings and saves the next change', async () => {
+    const store = new Map<string, string>([['volume', '0.25']])
+    vi.stubGlobal('window', {
+      desk: {
+        settings: {
+          get: async (key: string) => store.get(key) ?? null,
+          set: async (key: string, value: string) => {
+            store.set(key, value)
+          },
+        },
+      },
+    })
+    const player = await loadPlayer()
+    await player.hydrateVolume()
+    expect(player.getMiniPlayerSnapshot().volume).toBe(0.25)
+    expect(store.get('volume')).toBe('0.25')
+
+    player.setVolume(0.4)
+    await Promise.resolve()
+    expect(player.getMiniPlayerSnapshot().volume).toBe(0.4)
+    expect(store.get('volume')).toBe('0.4')
+  })
 })

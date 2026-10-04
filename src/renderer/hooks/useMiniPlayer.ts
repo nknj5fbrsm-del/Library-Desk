@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import type { DeskApi } from '@shared/deskApi'
 
 export interface MiniPlayerState {
   src: string | null
@@ -20,7 +21,17 @@ const initialState = (): MiniPlayerState => ({
 
 let state: MiniPlayerState = initialState()
 let singleton: HTMLAudioElement | null = null
+let volumeTouched = false
 const listeners = new Set<() => void>()
+
+function deskSettings(): DeskApi['settings'] | null {
+  if (typeof window === 'undefined') return null
+  return window.desk?.settings ?? null
+}
+
+function clampVolume(volume: number): number {
+  return Math.min(1, Math.max(0, volume))
+}
 
 function finiteSeconds(value: number): number {
   if (!Number.isFinite(value) || value < 0) return 0
@@ -151,10 +162,31 @@ export function seek(seconds: number): void {
   setState({ currentTime: next })
 }
 
-export function setVolume(volume: number): void {
-  const next = Math.min(1, Math.max(0, volume))
+function applyVolume(volume: number): void {
+  const next = clampVolume(volume)
   audio().volume = next
   setState({ volume: next })
+}
+
+export function setVolume(volume: number): void {
+  volumeTouched = true
+  const next = clampVolume(volume)
+  applyVolume(next)
+  void deskSettings()?.set('volume', String(next)).catch(() => undefined)
+}
+
+export async function hydrateVolume(): Promise<void> {
+  const settings = deskSettings()
+  if (!settings) return
+  try {
+    const raw = await settings.get('volume')
+    if (volumeTouched || raw == null || raw.trim() === '') return
+    const value = Number(raw)
+    if (volumeTouched || !Number.isFinite(value)) return
+    applyVolume(value)
+  } catch {
+    // Default-Lautstärke bleibt.
+  }
 }
 
 export function useMiniPlayer(): MiniPlayerState & {
