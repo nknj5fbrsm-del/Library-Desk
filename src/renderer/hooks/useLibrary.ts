@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getDesk } from '@renderer/api'
-import type { ListQuery } from '@shared/deskApi'
+import type { ListQuery, UpdateEntryPatch } from '@shared/deskApi'
 import type { Entry, LibraryFacet, SortMode } from '@shared/types'
 
 function collectTags(entries: Entry[]): string[] {
@@ -112,6 +112,38 @@ export function useLibrary() {
     })
   }, [run])
 
+  const updateEntry = useCallback(async (id: string, patch: UpdateEntryPatch): Promise<Entry> => {
+    try {
+      const saved = await getDesk().entries.update(id, patch)
+      await load(queryRef.current)
+      return saved
+    } catch (cause: unknown) {
+      setError(errorMessage(cause))
+      throw cause
+    }
+  }, [load])
+
+  const duplicateEntry = useCallback((id: string) => {
+    return run(async () => {
+      const created = await getDesk().entries.duplicate(id)
+      await load(queryRef.current, created.id)
+    })
+  }, [load, run])
+
+  const createVersion = useCallback((id: string) => {
+    return run(async () => {
+      const created = await getDesk().entries.createVersion(id)
+      await load(queryRef.current, created.id)
+    })
+  }, [load, run])
+
+  const deleteEntry = useCallback((id: string) => {
+    return run(async () => {
+      await getDesk().entries.delete(id)
+      await load(queryRef.current)
+    })
+  }, [load, run])
+
   const selectedEntry =
     entries.find((entry) => entry.id === selectedId) ??
     catalog.find((entry) => entry.id === selectedId) ??
@@ -141,5 +173,9 @@ export function useLibrary() {
     createNew,
     importLibrary,
     exportLibrary,
+    updateEntry,
+    duplicateEntry,
+    createVersion,
+    deleteEntry,
   }
 }
