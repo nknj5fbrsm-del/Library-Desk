@@ -1,6 +1,5 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AudioRef } from '../shared/types'
 import { buildExportBundle, parseExportBundle } from '../shared/exportFormat'
@@ -8,6 +7,7 @@ import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/de
 import {
   copyLocalAudio,
   deleteEntryAudio,
+  localPlaybackUrl,
   resolveLocalAudioFile,
 } from './audioFs'
 import type { AppDatabase } from './db'
@@ -140,7 +140,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     if (entry?.audio?.kind !== 'local') return null
     const filePath = resolveLocalAudioFile(audioRoot, entryId, entry.audio.relativePath)
     if (!existsSync(filePath)) return null
-    return pathToFileURL(filePath).href
+    return localPlaybackUrl(entryId, entry.audio.relativePath)
   })
 
   ipcMain.handle('io:exportLibrary', async () => {

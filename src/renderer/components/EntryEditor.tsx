@@ -6,7 +6,9 @@ import {
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
 import type { Entry } from '@shared/types'
+import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
+import { MiniPlayer } from '@renderer/components/MiniPlayer'
 
 const SAVE_DELAY_MS = 400
 
@@ -42,6 +44,171 @@ interface EntryEditorProps {
   onDuplicate: (id: string) => Promise<void>
   onCreateVersion: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onAudioChange: (entry: Entry) => void
+}
+
+function audioActionError(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : ''
+  if (message === 'Audio URL is empty') return 'Bitte eine Audio-URL eingeben.'
+  if (message.startsWith('Entry not found')) return 'Eintrag nicht gefunden.'
+  return 'Audio konnte nicht gespeichert werden.'
+}
+
+function AudioPanel({
+  entry,
+  onAudioChange,
+}: {
+  entry: Entry
+  onAudioChange: (entry: Entry) => void
+}): JSX.Element {
+  const [urlDraft, setUrlDraft] = useState('')
+  const [audioBusy, setAudioBusy] = useState(false)
+  const [audioNote, setAudioNote] = useState<string | null>(null)
+  const [playbackSrc, setPlaybackSrc] = useState<string | null>(null)
+  const [missingFile, setMissingFile] = useState(false)
+  const entryIdRef = useRef(entry.id)
+  const onAudioChangeRef = useRef(onAudioChange)
+  const urlDraftRef = useRef('')
+  const audioBusyRef = useRef(false)
+  entryIdRef.current = entry.id
+  onAudioChangeRef.current = onAudioChange
+
+  const sourceLabel =
+    entry.audio?.kind === 'local'
+      ? entry.audio.originalName
+      : entry.audio?.kind === 'url'
+        ? entry.audio.href
+        : null
+
+  useEffect(() => {
+    const audio = entry.audio
+    if (!audio) {
+      setPlaybackSrc(null)
+      setMissingFile(false)
+      return
+    }
+    if (audio.kind === 'url') {
+      setPlaybackSrc(audio.href)
+      setMissingFile(false)
+      return
+    }
+    let cancelled = false
+    setPlaybackSrc(null)
+    setMissingFile(false)
+    getDesk()
+      .audio.resolveLocalUrl(entry.id)
+      .then((url) => {
+        if (cancelled) return
+        if (!url) {
+          setMissingFile(true)
+          setPlaybackSrc(null)
+          return
+        }
+        setMissingFile(false)
+        setPlaybackSrc(url)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setMissingFile(true)
+        setPlaybackSrc(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [entry.id, entry.audio])
+
+  function writeUrlDraft(value: string): void {
+    urlDraftRef.current = value
+    setUrlDraft(value)
+  }
+
+  async function runAudio(action: () => Promise<Entry>): Promise<boolean> {
+    if (audioBusyRef.current) return false
+    audioBusyRef.current = true
+    setAudioBusy(true)
+    setAudioNote(null)
+    try {
+      const updated = await action()
+      if (entryIdRef.current === updated.id) onAudioChangeRef.current(updated)
+      return true
+    } catch (cause) {
+      setAudioNote(audioActionError(cause))
+      return false
+    } finally {
+      audioBusyRef.current = false
+      setAudioBusy(false)
+    }
+  }
+
+  async function submitUrl(): Promise<void> {
+    const href = urlDraftRef.current.trim()
+    if (!href) {
+      setAudioNote('Bitte eine Audio-URL eingeben.')
+      return
+    }
+    const saved = await runAudio(() => getDesk().audio.setUrl(entryIdRef.current, href))
+    if (saved && urlDraftRef.current.trim() === href) writeUrlDraft('')
+  }
+
+  return (
+    <section className="audio-panel" aria-label="Audio">
+      <span className="field-label">Audio</span>
+      <div className="audio-actions">
+        <button
+          type="button"
+          className="btn"
+          disabled={audioBusy}
+          onClick={() => void runAudio(() => getDesk().audio.attachLocal(entryIdRef.current))}
+        >
+          Lokale Datei…
+        </button>
+        <input
+          className="audio-url"
+          aria-label="Audio-URL"
+          placeholder="https://"
+          autoComplete="off"
+          spellCheck={false}
+          value={urlDraft}
+          onChange={(event) => writeUrlDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            void submitUrl()
+          }}
+        />
+        <button type="button" className="btn" disabled={audioBusy} onClick={() => void submitUrl()}>
+          URL setzen
+        </button>
+        {entry.audio ? (
+          <button
+            type="button"
+            className="btn"
+            disabled={audioBusy}
+            onClick={() => void runAudio(() => getDesk().audio.clear(entryIdRef.current))}
+          >
+            Entfernen
+          </button>
+        ) : null}
+      </div>
+      {sourceLabel ? <p className="audio-source">{sourceLabel}</p> : null}
+      {missingFile ? (
+        <p className="audio-missing" role="alert">
+          Audiodatei fehlt — bitte neu anhängen
+        </p>
+      ) : null}
+      {audioNote ? (
+        <p className="audio-missing" role="alert">
+          {audioNote}
+        </p>
+      ) : null}
+      {playbackSrc ? (
+        <MiniPlayer
+          src={playbackSrc}
+          openExternalHref={entry.audio?.kind === 'url' ? entry.audio.href : null}
+        />
+      ) : null}
+    </section>
+  )
 }
 
 function toDraft(entry: Entry): Draft {
@@ -73,7 +240,7 @@ function mergeTags(draft: Draft, raw: string): Draft {
 }
 
 export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function EntryEditor(
-  { entry, busy, onUpdate, onDuplicate, onCreateVersion, onDelete },
+  { entry, busy, onUpdate, onDuplicate, onCreateVersion, onDelete, onAudioChange },
   ref,
 ): JSX.Element {
   const [draft, setDraft] = useState<Draft>(() => toDraft(entry))
@@ -323,6 +490,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           </span>
         ) : null}
       </div>
+      <AudioPanel entry={entry} onAudioChange={onAudioChange} />
       <label className="field">
         <span className="field-label">Tags</span>
         <div className="tag-editor">

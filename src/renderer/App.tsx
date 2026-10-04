@@ -126,6 +126,7 @@ export default function App(): JSX.Element {
                 onDuplicate={library.duplicateEntry}
                 onCreateVersion={library.createVersion}
                 onDelete={library.deleteEntry}
+                onAudioChange={library.syncEntry}
               />
             </>
           ) : (

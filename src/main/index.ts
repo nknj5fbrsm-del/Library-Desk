@@ -1,7 +1,22 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, protocol } from 'electron'
 import { join } from 'path'
+import { registerDeskAudioProtocol } from './audioProtocol'
 import { openDatabase, type AppDatabase } from './db'
 import { registerIpc } from './ipc'
+
+// file:// audio is blocked by webSecurity when the renderer is served over http.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'desk',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+])
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -31,6 +46,7 @@ let db: AppDatabase | null = null
 
 app.whenReady().then(() => {
   const userData = app.getPath('userData')
+  registerDeskAudioProtocol(userData)
   db = openDatabase(join(userData, 'library.db'))
   registerIpc(db, userData)
   createWindow()

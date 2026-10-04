@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   copyLocalAudio,
   deleteEntryAudio,
+  localPlaybackUrl,
+  parseLocalPlaybackUrl,
   resolveLocalAudioFile,
   sanitizeFilename,
 } from '../src/main/audioFs'
@@ -52,5 +54,16 @@ describe('audioFs', () => {
     const audioRoot = join(userData, 'audio')
     expect(() => resolveLocalAudioFile(audioRoot, 'entry-1', '../track.mp3')).toThrow(/Invalid audio path/)
     expect(() => resolveLocalAudioFile(audioRoot, '../escape', 'track.mp3')).toThrow(/Invalid entry id/)
+  })
+
+  it('builds a desk playback url and parses encoded names', () => {
+    const href = localPlaybackUrl('entry-1', 'my song.mp3')
+    expect(href).toBe('desk://audio/entry-1/my%20song.mp3')
+    expect(parseLocalPlaybackUrl(href)).toEqual({
+      entryId: 'entry-1',
+      relativePath: 'my song.mp3',
+    })
+    expect(parseLocalPlaybackUrl('file:///tmp/my%20song.mp3')).toBeNull()
+    expect(parseLocalPlaybackUrl('desk://audio/entry-1/../secret.mp3')).toBeNull()
   })
 })

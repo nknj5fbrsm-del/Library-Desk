@@ -412,6 +412,77 @@ select,
   margin-top: 16px;
 }
 
+.audio-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.audio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-url {
+  flex: 1;
+  min-width: 180px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  padding: 0 8px;
+}
+
+.audio-source {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-missing,
+.mini-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.mini-player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-time {
+  flex: none;
+  min-width: 40px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.mini-progress {
+  flex: 1;
+  min-width: 120px;
+}
+
+.mini-volume {
+  width: 84px;
+}
+
+.mini-error {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

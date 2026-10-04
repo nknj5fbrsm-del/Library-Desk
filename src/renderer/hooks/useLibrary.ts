@@ -144,6 +144,11 @@ export function useLibrary() {
     })
   }, [load, run])
 
+  const syncEntry = useCallback((entry: Entry) => {
+    setEntries((current) => current.map((item) => (item.id === entry.id ? entry : item)))
+    setCatalog((current) => current.map((item) => (item.id === entry.id ? entry : item)))
+  }, [])
+
   const selectedEntry =
     entries.find((entry) => entry.id === selectedId) ??
     catalog.find((entry) => entry.id === selectedId) ??
@@ -177,5 +182,6 @@ export function useLibrary() {
     duplicateEntry,
     createVersion,
     deleteEntry,
+    syncEntry,
   }
 }
