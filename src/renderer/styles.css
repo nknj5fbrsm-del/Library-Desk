@@ -117,14 +117,49 @@ select,
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 36fr) minmax(0, 64fr);
+  grid-template-columns: 360px 6px minmax(0, 1fr);
 }
 
 .library {
   min-height: 0;
   overflow: auto;
   background: var(--bg-sunken);
-  border-right: 1px solid var(--line);
+}
+
+.split-resizer {
+  position: relative;
+  z-index: 2;
+  width: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.split-resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+}
+
+.split-resizer:hover,
+.split-resizer:focus-visible,
+.app.is-splitting .split-resizer {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+}
+
+.app.is-splitting {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.app.is-splitting .detail,
+.app.is-splitting .library {
+  pointer-events: none;
 }
 
 .detail {
