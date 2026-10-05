@@ -177,58 +177,60 @@ function AudioPanel({
       >
         Audio
       </button>
-      {open ? (
-        <div className="editor-accordion-body">
-          <div className="editor-actions-row">
-            <button
-              type="button"
-              className="btn"
-              disabled={audioBusy}
-              onClick={() => void runAudio(() => getDesk().audio.attachLocal(entryIdRef.current))}
-            >
-              Lokale Datei…
-            </button>
-            <input
-              className="editor-url"
-              aria-label="Audio-URL"
-              placeholder="https://"
-              autoComplete="off"
-              spellCheck={false}
-              value={urlDraft}
-              onChange={(event) => writeUrlDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter') return
-                event.preventDefault()
-                void submitUrl()
-              }}
-            />
-            <button type="button" className="btn" disabled={audioBusy} onClick={() => void submitUrl()}>
-              URL setzen
-            </button>
-            {entry.audio ? (
+      <div className={open ? 'editor-accordion-slot is-open' : 'editor-accordion-slot'}>
+        {open ? (
+          <div className="editor-accordion-body">
+            <div className="editor-actions-row">
               <button
                 type="button"
                 className="btn"
                 disabled={audioBusy}
-                onClick={() => void runAudio(() => getDesk().audio.clear(entryIdRef.current))}
+                onClick={() => void runAudio(() => getDesk().audio.attachLocal(entryIdRef.current))}
               >
-                Entfernen
+                Lokale Datei…
               </button>
+              <input
+                className="editor-url"
+                aria-label="Audio-URL"
+                placeholder="https://"
+                autoComplete="off"
+                spellCheck={false}
+                value={urlDraft}
+                onChange={(event) => writeUrlDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  void submitUrl()
+                }}
+              />
+              <button type="button" className="btn" disabled={audioBusy} onClick={() => void submitUrl()}>
+                URL setzen
+              </button>
+              {entry.audio ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={audioBusy}
+                  onClick={() => void runAudio(() => getDesk().audio.clear(entryIdRef.current))}
+                >
+                  Entfernen
+                </button>
+              ) : null}
+            </div>
+            {sourceLabel ? <p className="audio-source">{sourceLabel}</p> : null}
+            {missingFile ? (
+              <p className="audio-missing" role="alert">
+                Audiodatei fehlt — bitte neu anhängen
+              </p>
+            ) : null}
+            {audioNote ? (
+              <p className="audio-missing" role="alert">
+                {audioNote}
+              </p>
             ) : null}
           </div>
-          {sourceLabel ? <p className="audio-source">{sourceLabel}</p> : null}
-          {missingFile ? (
-            <p className="audio-missing" role="alert">
-              Audiodatei fehlt — bitte neu anhängen
-            </p>
-          ) : null}
-          {audioNote ? (
-            <p className="audio-missing" role="alert">
-              {audioNote}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+        ) : null}
+      </div>
       {playbackSrc ? (
         <MiniPlayer
           src={playbackSrc}
@@ -656,107 +658,109 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         >
           Veröffentlicht
         </button>
-        {publishOpen ? (
-          <div className="editor-accordion-body">
-            {draft.publishLinks.map((link) => (
-              <div key={link.id} className="editor-actions-row">
-                <input
-                  className="publish-label"
-                  aria-label="Link-Label"
-                  placeholder="YouTube, Spotify…"
-                  autoComplete="off"
-                  value={link.label}
-                  onChange={(event) => {
-                    const label = event.target.value
-                    patchDraft(
-                      {
-                        publishLinks: draftRef.current.publishLinks.map((item) =>
-                          item.id === link.id ? { ...item, label } : item,
-                        ),
-                      },
-                      true,
-                    )
-                  }}
-                />
-                <input
-                  className="editor-url"
-                  aria-label="Link-URL"
-                  placeholder="https://"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={link.href}
-                  onChange={(event) => {
-                    const href = event.target.value
-                    patchDraft(
-                      {
-                        publishLinks: draftRef.current.publishLinks.map((item) =>
-                          item.id === link.id ? { ...item, href } : item,
-                        ),
-                      },
-                      true,
-                    )
-                  }}
-                />
+        <div className={publishOpen ? 'editor-accordion-slot is-open' : 'editor-accordion-slot'}>
+          {publishOpen ? (
+            <div className="editor-accordion-body">
+              {draft.publishLinks.map((link) => (
+                <div key={link.id} className="editor-actions-row">
+                  <input
+                    className="publish-label"
+                    aria-label="Link-Label"
+                    placeholder="YouTube, Spotify…"
+                    autoComplete="off"
+                    value={link.label}
+                    onChange={(event) => {
+                      const label = event.target.value
+                      patchDraft(
+                        {
+                          publishLinks: draftRef.current.publishLinks.map((item) =>
+                            item.id === link.id ? { ...item, label } : item,
+                          ),
+                        },
+                        true,
+                      )
+                    }}
+                  />
+                  <input
+                    className="editor-url"
+                    aria-label="Link-URL"
+                    placeholder="https://"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={link.href}
+                    onChange={(event) => {
+                      const href = event.target.value
+                      patchDraft(
+                        {
+                          publishLinks: draftRef.current.publishLinks.map((item) =>
+                            item.id === link.id ? { ...item, href } : item,
+                          ),
+                        },
+                        true,
+                      )
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={!link.href.trim()}
+                    onClick={() => void getDesk().shell.openExternal(link.href.trim())}
+                  >
+                    Öffnen
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label="Link entfernen"
+                    onClick={() =>
+                      patchDraft(
+                        {
+                          publishLinks: draftRef.current.publishLinks.filter(
+                            (item) => item.id !== link.id,
+                          ),
+                        },
+                        true,
+                      )
+                    }
+                  >
+                    Entfernen
+                  </button>
+                </div>
+              ))}
+              <div className="editor-actions-row">
                 <button
                   type="button"
                   className="btn"
-                  disabled={!link.href.trim()}
-                  onClick={() => void getDesk().shell.openExternal(link.href.trim())}
-                >
-                  Öffnen
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  aria-label="Link entfernen"
                   onClick={() =>
                     patchDraft(
                       {
-                        publishLinks: draftRef.current.publishLinks.filter(
-                          (item) => item.id !== link.id,
-                        ),
+                        publishLinks: [
+                          ...draftRef.current.publishLinks,
+                          { id: crypto.randomUUID(), label: '', href: '' },
+                        ],
                       },
                       true,
                     )
                   }
                 >
-                  Entfernen
+                  + Link
                 </button>
+                {draft.published ? (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setPublishOpen(false)
+                      patchDraft({ published: false }, true)
+                    }}
+                  >
+                    Aufheben
+                  </button>
+                ) : null}
               </div>
-            ))}
-            <div className="editor-actions-row">
-              <button
-                type="button"
-                className="btn"
-                onClick={() =>
-                  patchDraft(
-                    {
-                      publishLinks: [
-                        ...draftRef.current.publishLinks,
-                        { id: crypto.randomUUID(), label: '', href: '' },
-                      ],
-                    },
-                    true,
-                  )
-                }
-              >
-                + Link
-              </button>
-              {draft.published ? (
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    setPublishOpen(false)
-                    patchDraft({ published: false }, true)
-                  }}
-                >
-                  Aufheben
-                </button>
-              ) : null}
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </section>
       <div className="field">
         <span className="field-label" id="tags-label">

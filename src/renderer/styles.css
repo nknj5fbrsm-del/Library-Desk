@@ -700,6 +700,19 @@ select,
   color: var(--rose-text);
 }
 
+.editor-accordion-slot {
+  min-height: 44px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-raised) 55%, transparent);
+}
+
+.editor-accordion-slot.is-open {
+  min-height: 0;
+  border-style: solid;
+  padding: 8px;
+}
+
 .editor-accordion-body {
   display: flex;
   flex-direction: column;
