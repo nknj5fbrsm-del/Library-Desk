@@ -550,81 +550,95 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
             value={draft.rating}
             onChange={(rating) => patchDraft({ rating }, true)}
           />
-        </div>
-      </div>
-      <div className="version-bar" aria-label="Versionen">
-        <span className="version-bar-label">Versionen</span>
-        <div className="version-chips">
-          {siblings.map((sibling) => (
-            <button
-              key={sibling.id}
-              type="button"
-              className={sibling.id === entry.id ? 'version-chip is-active' : 'version-chip'}
-              aria-pressed={sibling.id === entry.id}
-              onClick={() => {
-                if (sibling.id === entry.id) return
-                void (async () => {
-                  try {
-                    await flushRef.current()
-                  } catch {
+          <div className="field field-compact">
+            <span className="field-label" id="tags-label">
+              Tags
+            </span>
+            <div className="tag-editor" role="group" aria-labelledby="tags-label">
+              {draft.tags.map((tag) => (
+                <span key={tag.toLocaleLowerCase('de')} className="tag-chip">
+                  <span className="tag-chip-label">{tag}</span>
+                  <button
+                    type="button"
+                    className="tag-remove"
+                    aria-label={`${tag} entfernen`}
+                    onMouseDown={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      patchDraft(
+                        {
+                          tags: draftRef.current.tags.filter((item) => item !== tag),
+                        },
+                        true,
+                      )
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                aria-label="Tag hinzufügen"
+                placeholder="Tag, Enter"
+                autoComplete="off"
+                value={tagInput}
+                onChange={(event) => {
+                  const value = event.target.value
+                  if (value.includes(',')) {
+                    const parts = value.split(',')
+                    const remainder = parts.pop() ?? ''
+                    commitTagField(parts.join(','), remainder)
                     return
                   }
-                  onSelectVersion(sibling.id)
-                })()
-              }}
-            >
-              V{sibling.version}
-            </button>
-          ))}
+                  tagInputRef.current = value
+                  setTagInput(value)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ',') return
+                  event.preventDefault()
+                  commitTagField(tagInputRef.current)
+                }}
+                onBlur={() => {
+                  if (!tagInputRef.current.trim()) return
+                  commitTagField(tagInputRef.current)
+                }}
+              />
+            </div>
+          </div>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy}
-          onClick={() => void runStructural(onCreateVersionRef.current)}
-        >
-          + Version
-        </button>
       </div>
-      <p className="meta">
-        Erstellt {timeFormat.format(entry.createdAt)}
-        {' · '}
-        Geändert {timeFormat.format(entry.updatedAt)}
-        {saveLabel ? <span className="save-state"> · {saveLabel}</span> : null}
-      </p>
-      <div className="editor-actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={busy}
-          onClick={() => void runStructural(onDuplicateRef.current)}
-        >
-          Duplizieren
-        </button>
-        <button
-          type="button"
-          className="btn btn-danger"
-          disabled={busy}
-          onClick={() => setConfirmOpen(true)}
-        >
-          Löschen
-        </button>
-        <span className="action-gap" />
-        <button type="button" className="btn" onClick={() => void copyPart('style')}>
-          Style kopieren
-        </button>
-        <button type="button" className="btn" onClick={() => void copyPart('lyrics')}>
-          Lyrics kopieren
-        </button>
-        <button type="button" className="btn" onClick={() => void copyPart('both')}>
-          Beides kopieren
-        </button>
-        {copyNote ? (
-          <span className="copy-note" role="status">
-            {copyNote}
-          </span>
-        ) : null}
-      </div>
+      <label className="field">
+        <span className="field-label">Style</span>
+        <textarea
+          className="field-input"
+          aria-label="Style"
+          value={draft.stylePrompt}
+          spellCheck={false}
+          onChange={(event) => patchDraft({ stylePrompt: event.target.value })}
+        />
+      </label>
+      <label className="field">
+        <span className="field-label">Lyrics</span>
+        <textarea
+          className="field-input"
+          aria-label="Lyrics"
+          value={draft.lyrics}
+          onChange={(event) => patchDraft({ lyrics: event.target.value })}
+        />
+      </label>
+      <label className="field">
+        <span className="field-label">Notizen</span>
+        <textarea
+          className="field-input field-notes"
+          aria-label="Notizen"
+          value={draft.notes}
+          onChange={(event) => patchDraft({ notes: event.target.value })}
+        />
+      </label>
       <AudioPanel entry={entry} onAudioChange={onAudioChange} />
       <section className="editor-accordion" aria-label="Veröffentlicht">
         <button
@@ -762,93 +776,79 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           ) : null}
         </div>
       </section>
-      <div className="field">
-        <span className="field-label" id="tags-label">
-          Tags
-        </span>
-        <div className="tag-editor" role="group" aria-labelledby="tags-label">
-          {draft.tags.map((tag) => (
-            <span key={tag.toLocaleLowerCase('de')} className="tag-chip">
-              <span className="tag-chip-label">{tag}</span>
-              <button
-                type="button"
-                className="tag-remove"
-                aria-label={`${tag} entfernen`}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                }}
-                onClick={(event) => {
-                  event.preventDefault()
-                  event.stopPropagation()
-                  patchDraft(
-                    {
-                      tags: draftRef.current.tags.filter((item) => item !== tag),
-                    },
-                    true,
-                  )
-                }}
-              >
-                ×
-              </button>
-            </span>
+      <div className="version-bar" aria-label="Versionen">
+        <span className="version-bar-label">Versionen</span>
+        <div className="version-chips">
+          {siblings.map((sibling) => (
+            <button
+              key={sibling.id}
+              type="button"
+              className={sibling.id === entry.id ? 'version-chip is-active' : 'version-chip'}
+              aria-pressed={sibling.id === entry.id}
+              onClick={() => {
+                if (sibling.id === entry.id) return
+                void (async () => {
+                  try {
+                    await flushRef.current()
+                  } catch {
+                    return
+                  }
+                  onSelectVersion(sibling.id)
+                })()
+              }}
+            >
+              V{sibling.version}
+            </button>
           ))}
-          <input
-            aria-label="Tag hinzufügen"
-            placeholder="Tag, Enter"
-            autoComplete="off"
-            value={tagInput}
-            onChange={(event) => {
-              const value = event.target.value
-              if (value.includes(',')) {
-                const parts = value.split(',')
-                const remainder = parts.pop() ?? ''
-                commitTagField(parts.join(','), remainder)
-                return
-              }
-              tagInputRef.current = value
-              setTagInput(value)
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Enter' && event.key !== ',') return
-              event.preventDefault()
-              commitTagField(tagInputRef.current)
-            }}
-            onBlur={() => {
-              if (!tagInputRef.current.trim()) return
-              commitTagField(tagInputRef.current)
-            }}
-          />
         </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy}
+          onClick={() => void runStructural(onCreateVersionRef.current)}
+        >
+          + Version
+        </button>
       </div>
-      <label className="field">
-        <span className="field-label">Style</span>
-        <textarea
-          className="field-input"
-          aria-label="Style"
-          value={draft.stylePrompt}
-          spellCheck={false}
-          onChange={(event) => patchDraft({ stylePrompt: event.target.value })}
-        />
-      </label>
-      <label className="field">
-        <span className="field-label">Lyrics</span>
-        <textarea
-          className="field-input"
-          aria-label="Lyrics"
-          value={draft.lyrics}
-          onChange={(event) => patchDraft({ lyrics: event.target.value })}
-        />
-      </label>
-      <label className="field">
-        <span className="field-label">Notizen</span>
-        <textarea
-          className="field-input field-notes"
-          aria-label="Notizen"
-          value={draft.notes}
-          onChange={(event) => patchDraft({ notes: event.target.value })}
-        />
-      </label>
+      <p className="meta">
+        Erstellt {timeFormat.format(entry.createdAt)}
+        {' · '}
+        Geändert {timeFormat.format(entry.updatedAt)}
+        {saveLabel ? <span className="save-state"> · {saveLabel}</span> : null}
+      </p>
+      <div className="editor-actions">
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => void runStructural(onDuplicateRef.current)}
+        >
+          Duplizieren
+        </button>
+        <button
+          type="button"
+          className="btn btn-danger"
+          disabled={busy}
+          onClick={() => setConfirmOpen(true)}
+        >
+          Löschen
+        </button>
+        <span className="action-gap" />
+        <button type="button" className="btn" onClick={() => void copyPart('style')}>
+          Style kopieren
+        </button>
+        <button type="button" className="btn" onClick={() => void copyPart('lyrics')}>
+          Lyrics kopieren
+        </button>
+        <button type="button" className="btn" onClick={() => void copyPart('both')}>
+          Beides kopieren
+        </button>
+        {copyNote ? (
+          <span className="copy-note" role="status">
+            {copyNote}
+          </span>
+        ) : null}
+      </div>
       {confirmOpen ? (
         <ConfirmDialog
           message={
