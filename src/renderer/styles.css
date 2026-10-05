@@ -8,6 +8,8 @@
   --text-muted: #6d665e;
   --accent: #3e5348;
   --accent-soft: #e3ebe6;
+  --rose: #e8a0b0;
+  --rose-text: #5c2a36;
   --danger: #8d3e34;
   --font: "Segoe UI", system-ui, sans-serif;
   --radius: 6px;
@@ -633,9 +635,10 @@ select,
   align-self: flex-start;
 }
 
-.editor-accordion-toggle.is-open {
-  border-color: var(--text-muted);
-  background: var(--bg);
+.editor-accordion-toggle.is-active {
+  background: var(--rose);
+  border-color: var(--rose);
+  color: var(--rose-text);
 }
 
 .editor-accordion-body {

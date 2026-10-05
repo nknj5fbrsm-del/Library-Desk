@@ -167,11 +167,15 @@ function AudioPanel({
     <section className="editor-accordion" aria-label="Audio">
       <button
         type="button"
-        className={open ? 'btn editor-accordion-toggle is-open' : 'btn editor-accordion-toggle'}
+        className={
+          entry.audio
+            ? 'btn editor-accordion-toggle is-active'
+            : 'btn editor-accordion-toggle'
+        }
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        Audio{entry.audio ? ' · gesetzt' : ''}
+        Audio
       </button>
       {open ? (
         <div className="editor-accordion-body">
@@ -624,7 +628,9 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         <button
           type="button"
           className={
-            publishOpen ? 'btn editor-accordion-toggle is-open' : 'btn editor-accordion-toggle'
+            draft.published
+              ? 'btn editor-accordion-toggle is-active'
+              : 'btn editor-accordion-toggle'
           }
           aria-expanded={publishOpen}
           onClick={() => {
@@ -648,7 +654,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
             }
           }}
         >
-          Veröffentlicht{draft.published ? ' · aktiv' : ''}
+          Veröffentlicht
         </button>
         {publishOpen ? (
           <div className="editor-accordion-body">
