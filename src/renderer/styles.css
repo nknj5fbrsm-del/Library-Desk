@@ -50,12 +50,36 @@ textarea {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  position: relative;
   background: var(--bg);
+  --cover-ambience: transparent;
+}
+
+.app-ambience {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 110% 75% at 78% 0%, var(--cover-ambience, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 90% 60% at 8% 100%, var(--cover-ambience, transparent) 0%, transparent 55%),
+    linear-gradient(180deg, var(--cover-ambience, transparent) 0%, transparent 42%);
+  transition: opacity 0.75s ease;
+}
+
+.app-ambience.is-active {
+  opacity: 1;
+}
+
+.app > :not(.app-ambience) {
+  position: relative;
+  z-index: 1;
 }
 
 .toolbar {
   flex: none;
-  background: var(--bg-raised);
+  background: color-mix(in srgb, var(--bg-raised) 78%, transparent);
   border-bottom: 1px solid var(--line);
   padding: 10px 12px;
 }
@@ -123,7 +147,7 @@ select,
 .library {
   min-height: 0;
   overflow: auto;
-  background: var(--bg-sunken);
+  background: color-mix(in srgb, var(--bg-sunken) 80%, transparent);
 }
 
 .split-resizer {
@@ -165,7 +189,7 @@ select,
 .detail {
   min-height: 0;
   overflow: auto;
-  background: var(--bg-raised);
+  background: color-mix(in srgb, var(--bg-raised) 82%, transparent);
   padding: 28px 32px;
 }
 

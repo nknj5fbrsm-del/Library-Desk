@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { getDesk } from '@renderer/api'
 import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor'
 import { LibraryList } from '@renderer/components/LibraryList'
 import { Toolbar } from '@renderer/components/Toolbar'
+import { useCoverAmbienceLayers } from '@renderer/hooks/useCoverAmbience'
 import { useLibrary } from '@renderer/hooks/useLibrary'
 import { hydrateVolume } from '@renderer/hooks/useMiniPlayer'
 
@@ -44,6 +45,7 @@ export default function App(): JSX.Element {
   const [listWidth, setListWidth] = useState(SPLIT_DEFAULT)
   const [dragging, setDragging] = useState(false)
   listWidthRef.current = listWidth
+  const coverAmbience = useCoverAmbienceLayers(library.selectedEntry)
 
   const filtered =
     library.query.search.trim().length > 0 || library.query.facet !== 'all'
@@ -186,6 +188,20 @@ export default function App(): JSX.Element {
 
   return (
     <div className={dragging ? 'app is-splitting' : 'app'}>
+      <div
+        className={
+          coverAmbience.frontActive ? 'app-ambience is-active' : 'app-ambience'
+        }
+        style={{ '--cover-ambience': coverAmbience.front } as CSSProperties}
+        aria-hidden="true"
+      />
+      <div
+        className={
+          coverAmbience.frontActive ? 'app-ambience' : 'app-ambience is-active'
+        }
+        style={{ '--cover-ambience': coverAmbience.back } as CSSProperties}
+        aria-hidden="true"
+      />
       <Toolbar
         search={library.query.search}
         facet={library.query.facet}
