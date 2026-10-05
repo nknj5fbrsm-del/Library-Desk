@@ -607,6 +607,194 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         ) : null}
       </div>
       <AudioPanel entry={entry} onAudioChange={onAudioChange} />
+      <section className="publish-panel" aria-label="Veröffentlicht">
+        <span className="field-label">Veröffentlicht</span>
+        <div className="publish-actions">
+          <label className="publish-check">
+            <input
+              type="checkbox"
+              aria-label="Veröffentlicht"
+              checked={draft.published}
+              onChange={(event) => {
+                const published = event.target.checked
+                if (published && draftRef.current.publishLinks.length === 0) {
+                  patchDraft(
+                    {
+                      published: true,
+                      publishLinks: [{ id: crypto.randomUUID(), label: '', href: '' }],
+                    },
+                    true,
+                  )
+                  return
+                }
+                patchDraft({ published }, true)
+              }}
+            />
+          </label>
+          {draft.published && draft.publishLinks[0] ? (
+            <>
+              <input
+                className="publish-label"
+                aria-label="Link-Label"
+                placeholder="YouTube, Spotify…"
+                autoComplete="off"
+                value={draft.publishLinks[0].label}
+                onChange={(event) => {
+                  const label = event.target.value
+                  const id = draftRef.current.publishLinks[0]?.id
+                  if (!id) return
+                  patchDraft(
+                    {
+                      publishLinks: draftRef.current.publishLinks.map((item) =>
+                        item.id === id ? { ...item, label } : item,
+                      ),
+                    },
+                    true,
+                  )
+                }}
+              />
+              <input
+                className="publish-url"
+                aria-label="Link-URL"
+                placeholder="https://"
+                autoComplete="off"
+                spellCheck={false}
+                value={draft.publishLinks[0].href}
+                onChange={(event) => {
+                  const href = event.target.value
+                  const id = draftRef.current.publishLinks[0]?.id
+                  if (!id) return
+                  patchDraft(
+                    {
+                      publishLinks: draftRef.current.publishLinks.map((item) =>
+                        item.id === id ? { ...item, href } : item,
+                      ),
+                    },
+                    true,
+                  )
+                }}
+              />
+              <button
+                type="button"
+                className="btn"
+                disabled={!draft.publishLinks[0].href.trim()}
+                onClick={() =>
+                  void getDesk().shell.openExternal(draft.publishLinks[0]!.href.trim())
+                }
+              >
+                Öffnen
+              </button>
+              <button
+                type="button"
+                className="btn"
+                aria-label="Link entfernen"
+                onClick={() => {
+                  const id = draftRef.current.publishLinks[0]?.id
+                  if (!id) return
+                  const rest = draftRef.current.publishLinks.filter((item) => item.id !== id)
+                  patchDraft(
+                    rest.length === 0 ? { published: false, publishLinks: [] } : { publishLinks: rest },
+                    true,
+                  )
+                }}
+              >
+                Entfernen
+              </button>
+            </>
+          ) : null}
+        </div>
+        {draft.published
+          ? draft.publishLinks.slice(1).map((link) => (
+              <div key={link.id} className="publish-actions">
+                <span className="publish-check-spacer" aria-hidden="true" />
+                <input
+                  className="publish-label"
+                  aria-label="Link-Label"
+                  placeholder="YouTube, Spotify…"
+                  autoComplete="off"
+                  value={link.label}
+                  onChange={(event) => {
+                    const label = event.target.value
+                    patchDraft(
+                      {
+                        publishLinks: draftRef.current.publishLinks.map((item) =>
+                          item.id === link.id ? { ...item, label } : item,
+                        ),
+                      },
+                      true,
+                    )
+                  }}
+                />
+                <input
+                  className="publish-url"
+                  aria-label="Link-URL"
+                  placeholder="https://"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={link.href}
+                  onChange={(event) => {
+                    const href = event.target.value
+                    patchDraft(
+                      {
+                        publishLinks: draftRef.current.publishLinks.map((item) =>
+                          item.id === link.id ? { ...item, href } : item,
+                        ),
+                      },
+                      true,
+                    )
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={!link.href.trim()}
+                  onClick={() => void getDesk().shell.openExternal(link.href.trim())}
+                >
+                  Öffnen
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label="Link entfernen"
+                  onClick={() =>
+                    patchDraft(
+                      {
+                        publishLinks: draftRef.current.publishLinks.filter(
+                          (item) => item.id !== link.id,
+                        ),
+                      },
+                      true,
+                    )
+                  }
+                >
+                  Entfernen
+                </button>
+              </div>
+            ))
+          : null}
+        {draft.published ? (
+          <div className="publish-actions">
+            <span className="publish-check-spacer" aria-hidden="true" />
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                patchDraft(
+                  {
+                    publishLinks: [
+                      ...draftRef.current.publishLinks,
+                      { id: crypto.randomUUID(), label: '', href: '' },
+                    ],
+                  },
+                  true,
+                )
+              }
+            >
+              + Link
+            </button>
+          </div>
+        ) : null}
+      </section>
       <div className="field">
         <span className="field-label" id="tags-label">
           Tags
@@ -666,99 +854,6 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           />
         </div>
       </div>
-      <label className="field field-inline">
-        <input
-          type="checkbox"
-          checked={draft.published}
-          onChange={(event) => patchDraft({ published: event.target.checked }, true)}
-        />
-        <span className="field-label">Veröffentlicht</span>
-      </label>
-      {draft.published ? (
-        <div className="publish-links" aria-label="Publish-Links">
-          {draft.publishLinks.map((link) => (
-            <div key={link.id} className="publish-link-row">
-              <input
-                aria-label="Link-Label"
-                placeholder="YouTube, Spotify…"
-                autoComplete="off"
-                value={link.label}
-                onChange={(event) => {
-                  const label = event.target.value
-                  patchDraft(
-                    {
-                      publishLinks: draftRef.current.publishLinks.map((item) =>
-                        item.id === link.id ? { ...item, label } : item,
-                      ),
-                    },
-                    true,
-                  )
-                }}
-              />
-              <input
-                aria-label="Link-URL"
-                placeholder="https://"
-                autoComplete="off"
-                spellCheck={false}
-                value={link.href}
-                onChange={(event) => {
-                  const href = event.target.value
-                  patchDraft(
-                    {
-                      publishLinks: draftRef.current.publishLinks.map((item) =>
-                        item.id === link.id ? { ...item, href } : item,
-                      ),
-                    },
-                    true,
-                  )
-                }}
-              />
-              <button
-                type="button"
-                className="btn"
-                disabled={!link.href.trim()}
-                onClick={() => void getDesk().shell.openExternal(link.href.trim())}
-              >
-                Öffnen
-              </button>
-              <button
-                type="button"
-                className="btn"
-                aria-label="Link entfernen"
-                onClick={() =>
-                  patchDraft(
-                    {
-                      publishLinks: draftRef.current.publishLinks.filter(
-                        (item) => item.id !== link.id,
-                      ),
-                    },
-                    true,
-                  )
-                }
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn"
-            onClick={() =>
-              patchDraft(
-                {
-                  publishLinks: [
-                    ...draftRef.current.publishLinks,
-                    { id: crypto.randomUUID(), label: '', href: '' },
-                  ],
-                },
-                true,
-              )
-            }
-          >
-            + Link
-          </button>
-        </div>
-      ) : null}
       <label className="field">
         <span className="field-label">Style</span>
         <textarea
