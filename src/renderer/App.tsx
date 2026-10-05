@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { getDesk } from '@renderer/api'
+import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor'
 import { LibraryList } from '@renderer/components/LibraryList'
 import { Toolbar } from '@renderer/components/Toolbar'
 import { useCoverAmbienceLayers } from '@renderer/hooks/useCoverAmbience'
 import { useLibrary } from '@renderer/hooks/useLibrary'
 import { hydrateVolume } from '@renderer/hooks/useMiniPlayer'
+import type { Entry } from '@shared/types'
 
 const SPLIT_SETTING_KEY = 'splitListWidth'
 const SPLIT_DEFAULT = 360
@@ -44,6 +46,7 @@ export default function App(): JSX.Element {
 
   const [listWidth, setListWidth] = useState(SPLIT_DEFAULT)
   const [dragging, setDragging] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<Entry | null>(null)
   listWidthRef.current = listWidth
   const coverAmbience = useCoverAmbienceLayers(library.selectedEntry)
 
@@ -255,7 +258,9 @@ export default function App(): JSX.Element {
           loading={library.loading}
           error={library.error}
           filtered={filtered}
+          busy={library.busy}
           onSelect={library.select}
+          onDelete={(entry) => setPendingDelete(entry)}
         />
         <div
           className="split-resizer"
@@ -303,6 +308,33 @@ export default function App(): JSX.Element {
           )}
         </section>
       </div>
+      {pendingDelete ? (
+        <ConfirmDialog
+          message={
+            library.catalog.filter((entry) => entry.groupId === pendingDelete.groupId).length >= 2
+              ? `Version ${pendingDelete.version} von „${pendingDelete.title}“ wirklich löschen?`
+              : `Eintrag „${pendingDelete.title}“ wirklich löschen?`
+          }
+          confirmLabel="Löschen"
+          cancelLabel="Abbrechen"
+          danger
+          onConfirm={() => {
+            const target = pendingDelete
+            setPendingDelete(null)
+            void (async () => {
+              try {
+                if (library.selectedId === target.id) {
+                  await editorRef.current?.flush()
+                }
+              } catch {
+                return
+              }
+              await library.deleteEntry(target.id)
+            })()
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      ) : null}
     </div>
   )
 }

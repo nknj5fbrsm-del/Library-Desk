@@ -9,7 +9,9 @@ interface LibraryListProps {
   loading: boolean
   error: string | null
   filtered: boolean
+  busy?: boolean
   onSelect: (id: string) => void
+  onDelete: (entry: Entry) => void
 }
 
 function AudioIcon(): JSX.Element {
@@ -23,13 +25,26 @@ function AudioIcon(): JSX.Element {
   )
 }
 
+function TrashIcon(): JSX.Element {
+  return (
+    <svg className="group-delete-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M6.25 2a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5zM3 4.25h10a.75.75 0 0 1 0 1.5h-.4l-.45 7.05A1.75 1.75 0 0 1 10.41 14.5H5.59a1.75 1.75 0 0 1-1.74-1.7L3.4 5.75H3a.75.75 0 0 1 0-1.5zm2.16 1.5.43 6.75h4.82l.43-6.75H5.16z"
+      />
+    </svg>
+  )
+}
+
 export function LibraryList({
   entries,
   selectedId,
   loading,
   error,
   filtered,
+  busy = false,
   onSelect,
+  onDelete,
 }: LibraryListProps): JSX.Element {
   const groups = groupEntriesForDisplay(entries)
 
@@ -53,24 +68,38 @@ export function LibraryList({
             const active = group.versions.some((entry) => entry.id === selectedId)
             const rating = Math.max(...group.versions.map((entry) => entry.rating)) as Entry['rating']
             const hasAudio = group.versions.some((entry) => entry.audio !== null)
+            const deleteTarget =
+              group.versions.find((entry) => entry.id === selectedId) ?? group.representative
             return (
               <li key={group.key} className={active ? 'group is-active' : 'group'}>
-                <button
-                  type="button"
-                  className="group-main"
-                  aria-current={active && !showChips ? 'true' : undefined}
-                  onClick={() => onSelect(group.representative.id)}
-                >
-                  <CoverThumb entry={group.representative} />
-                  <span className="group-title">{group.representative.title}</span>
-                  <StarRatingDisplay value={rating} />
-                  {hasAudio ? (
-                    <span className="audio-mark" title="Audio">
-                      <AudioIcon />
-                      <span className="sr-only">Audio</span>
-                    </span>
-                  ) : null}
-                </button>
+                <div className="group-row">
+                  <button
+                    type="button"
+                    className="group-main"
+                    aria-current={active && !showChips ? 'true' : undefined}
+                    onClick={() => onSelect(group.representative.id)}
+                  >
+                    <CoverThumb entry={group.representative} />
+                    <span className="group-title">{group.representative.title}</span>
+                    <StarRatingDisplay value={rating} />
+                    {hasAudio ? (
+                      <span className="audio-mark" title="Audio">
+                        <AudioIcon />
+                        <span className="sr-only">Audio</span>
+                      </span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    className="group-delete"
+                    disabled={busy}
+                    aria-label={`„${deleteTarget.title}“ löschen`}
+                    title="Löschen"
+                    onClick={() => onDelete(deleteTarget)}
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
                 {showChips ? (
                   <div className="chips" role="group" aria-label={`Versionen von ${group.representative.title}`}>
                     {group.versions.map((entry) => (

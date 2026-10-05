@@ -240,16 +240,56 @@ select,
   box-shadow: inset 2px 0 0 var(--accent);
 }
 
+.group-row {
+  display: flex;
+  align-items: stretch;
+}
+
 .group-main {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 12px;
+  padding: 9px 4px 9px 12px;
   border: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
+}
+
+.group-delete {
+  flex: none;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 8px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.group-delete-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.group-delete:hover:not(:disabled) {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  opacity: 1;
+}
+
+.group-delete:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .cover-thumb {

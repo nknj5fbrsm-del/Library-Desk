@@ -211,6 +211,7 @@ export function useLibrary() {
     versionSiblings,
     select: (id: string) => setSelectedId(id),
     entries,
+    catalog,
     tags: collectTags(catalog),
     loading,
     busy,
