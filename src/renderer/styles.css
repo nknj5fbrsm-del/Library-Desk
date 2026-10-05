@@ -561,6 +561,11 @@ select,
   gap: 6px;
 }
 
+.field-compact {
+  gap: 4px;
+  margin: 0;
+}
+
 .field-label {
   font-size: 12px;
   color: var(--text-muted);
