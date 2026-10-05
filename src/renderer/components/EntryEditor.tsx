@@ -6,11 +6,12 @@ import {
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
 import { applyExternalEntry } from '@shared/editorDraft'
-import type { Entry } from '@shared/types'
+import type { Entry, StarRating } from '@shared/types'
 import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
-import { CoverThumb } from '@renderer/components/CoverThumb'
+import { CoverPanel } from '@renderer/components/CoverThumb'
 import { MiniPlayer } from '@renderer/components/MiniPlayer'
+import { StarRatingInput } from '@renderer/components/StarRating'
 
 const SAVE_DELAY_MS = 400
 
@@ -25,7 +26,7 @@ interface Draft {
   lyrics: string
   notes: string
   tags: string[]
-  isPower: boolean
+  rating: StarRating
 }
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
@@ -41,12 +42,15 @@ export interface EditorHandle {
 
 interface EntryEditorProps {
   entry: Entry
+  siblings: Entry[]
   busy: boolean
   onUpdate: (id: string, patch: UpdateEntryPatch) => Promise<Entry>
   onDuplicate: (id: string) => Promise<void>
   onCreateVersion: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onSelectVersion: (id: string) => void
   onAudioChange: (entry: Entry) => void
+  onCoverChange: (entry: Entry) => void
 }
 
 function audioActionError(cause: unknown): string {
@@ -221,7 +225,7 @@ function toDraft(entry: Entry): Draft {
     lyrics: entry.lyrics,
     notes: entry.notes,
     tags: [...entry.tags],
-    isPower: entry.isPower,
+    rating: entry.rating,
   }
 }
 
@@ -243,7 +247,18 @@ function mergeTags(draft: Draft, raw: string): Draft {
 }
 
 export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function EntryEditor(
-  { entry, busy, onUpdate, onDuplicate, onCreateVersion, onDelete, onAudioChange },
+  {
+    entry,
+    siblings,
+    busy,
+    onUpdate,
+    onDuplicate,
+    onCreateVersion,
+    onDelete,
+    onSelectVersion,
+    onAudioChange,
+    onCoverChange,
+  },
   ref,
 ): JSX.Element {
   const [draft, setDraft] = useState<Draft>(() => toDraft(entry))
@@ -316,7 +331,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       lyrics: sent.lyrics,
       notes: sent.notes,
       tags: [...sent.tags],
-      isPower: sent.isPower,
+      rating: sent.rating,
     }
     if (mountedRef.current) setSaveState('saving')
     savingRef.current = true
@@ -441,11 +456,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   return (
     <div className="editor">
       <div className="editor-head">
-        {entry.cover ? (
-          <div className="cover-panel" aria-label="Cover">
-            <CoverThumb entry={entry} size="detail" />
-          </div>
-        ) : null}
+        <CoverPanel entry={entry} busy={busy} onChange={onCoverChange} />
         <div className="editor-head-main">
           <input
             className="title-input"
@@ -456,33 +467,53 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
             spellCheck={false}
             onChange={(event) => patchDraft({ title: event.target.value })}
           />
-          <label className="power-toggle">
-            <input
-              type="checkbox"
-              checked={draft.isPower}
-              onChange={(event) => patchDraft({ isPower: event.target.checked })}
-            />
-            Power
-          </label>
+          <StarRatingInput
+            value={draft.rating}
+            onChange={(rating) => patchDraft({ rating })}
+          />
         </div>
       </div>
+      <div className="version-bar" aria-label="Versionen">
+        <span className="version-bar-label">Versionen</span>
+        <div className="version-chips">
+          {siblings.map((sibling) => (
+            <button
+              key={sibling.id}
+              type="button"
+              className={sibling.id === entry.id ? 'version-chip is-active' : 'version-chip'}
+              aria-pressed={sibling.id === entry.id}
+              onClick={() => {
+                if (sibling.id === entry.id) return
+                void (async () => {
+                  try {
+                    await flushRef.current()
+                  } catch {
+                    return
+                  }
+                  onSelectVersion(sibling.id)
+                })()
+              }}
+            >
+              V{sibling.version}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy}
+          onClick={() => void runStructural(onCreateVersionRef.current)}
+        >
+          + Version
+        </button>
+      </div>
       <p className="meta">
-        Version {entry.version}
-        {' · '}
         Erstellt {timeFormat.format(entry.createdAt)}
         {' · '}
         Geändert {timeFormat.format(entry.updatedAt)}
         {saveLabel ? <span className="save-state"> · {saveLabel}</span> : null}
       </p>
       <div className="editor-actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={busy}
-          onClick={() => void runStructural(onCreateVersionRef.current)}
-        >
-          Version anlegen
-        </button>
         <button
           type="button"
           className="btn"
@@ -592,7 +623,11 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       </label>
       {confirmOpen ? (
         <ConfirmDialog
-          message="Eintrag wirklich löschen?"
+          message={
+            siblings.length >= 2
+              ? `Version ${entry.version} von „${entry.title}“ wirklich löschen?`
+              : `Eintrag „${entry.title}“ wirklich löschen?`
+          }
           confirmLabel="Löschen"
           cancelLabel="Abbrechen"
           danger

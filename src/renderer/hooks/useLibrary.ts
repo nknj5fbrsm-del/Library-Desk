@@ -184,6 +184,13 @@ export function useLibrary() {
     catalog.find((entry) => entry.id === selectedId) ??
     null
 
+  const versionSiblings = selectedEntry
+    ? catalog
+        .filter((entry) => entry.groupId === selectedEntry.groupId)
+        .slice()
+        .sort((a, b) => a.version - b.version)
+    : []
+
   return {
     query,
     setSearch: (search: string) => {
@@ -201,6 +208,7 @@ export function useLibrary() {
     },
     selectedId,
     selectedEntry,
+    versionSiblings,
     select: (id: string) => setSelectedId(id),
     entries,
     tags: collectTags(catalog),

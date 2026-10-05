@@ -19,7 +19,7 @@ function entry(overrides: Partial<Entry> = {}): Entry {
     lyrics: '[Verse]\nla',
     notes: 'memo',
     tags: ['Night'],
-    isPower: true,
+    rating: 5,
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: null,
@@ -49,7 +49,7 @@ describe('export format', () => {
       lyrics: '[Verse]\nla',
       notes: 'memo',
       tags: ['Night'],
-      isPower: true,
+      rating: 5,
       createdAt: '2026-10-04T11:00:00.000Z',
       updatedAt: '2026-10-04T11:30:00.000Z',
       audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
@@ -182,7 +182,7 @@ describe('export format', () => {
       stylePrompt: '',
       lyrics: '',
       notes: '',
-      isPower: false,
+      rating: 0,
       tags: [],
     })
     const parsed = parseExportBundle({

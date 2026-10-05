@@ -1,4 +1,5 @@
-import type { Entry } from './types'
+import type { Entry, StarRating } from './types'
+import { normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
 export interface MastermindMappedItem {
@@ -108,6 +109,13 @@ export function mapMastermindItem(raw: unknown): MastermindMapResult {
 
   const coverDataUrl = pickDataUrl(asString(raw.coverThumbUrl), asString(raw.coverUrl))
 
+  let rating: StarRating = 0
+  if (typeof raw.rating === 'number') {
+    rating = normalizeRating(raw.rating)
+  } else if (raw.isFavorite === true) {
+    rating = 5
+  }
+
   return {
     entry: {
       id,
@@ -118,7 +126,7 @@ export function mapMastermindItem(raw: unknown): MastermindMapResult {
       lyrics,
       notes: asString(raw.notes),
       tags: tagsFromMastermind(raw),
-      isPower: raw.isFavorite === true,
+      rating,
       createdAt: timestamp,
       updatedAt: lastSaved,
       audio: null,

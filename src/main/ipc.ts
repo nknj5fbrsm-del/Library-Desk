@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { copyFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AudioRef } from '../shared/types'
@@ -12,6 +12,7 @@ import {
 } from './audioFs'
 import {
   copyCoverBetweenEntries,
+  copyLocalCover,
   coverDisplayUrl,
   coverRootFor,
   deleteEntryCover,
@@ -179,6 +180,44 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     const filePath = resolveLocalCoverFile(coverRoot, entryId, entry.cover.relativePath)
     if (!existsSync(filePath)) return null
     return coverDisplayUrl(entryId, entry.cover.relativePath)
+  })
+
+  ipcMain.handle('cover:attachLocal', async (_event, entryId: string) => {
+    const existing = getEntry(db, entryId)
+    if (!existing) throw new Error(`Entry not found: ${entryId}`)
+    const picked = await openFile({
+      title: 'Cover wählen',
+      filters: [
+        { name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      ],
+      properties: ['openFile'],
+    })
+    if (picked.canceled || picked.filePaths.length === 0) return null
+    const copied = copyLocalCover(userData, entryId, picked.filePaths[0])
+    return updateEntry(db, entryId, { cover: copied })
+  })
+
+  ipcMain.handle('cover:download', async (_event, entryId: string) => {
+    const entry = getEntry(db, entryId)
+    if (!entry?.cover) throw new Error('Kein Cover vorhanden')
+    const filePath = resolveLocalCoverFile(coverRoot, entryId, entry.cover.relativePath)
+    if (!existsSync(filePath)) throw new Error('Cover-Datei fehlt')
+    const picked = await saveFile({
+      title: 'Cover speichern',
+      defaultPath: entry.cover.originalName || 'cover.png',
+      filters: [
+        { name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      ],
+    })
+    if (picked.canceled || !picked.filePath) return null
+    copyFileSync(filePath, picked.filePath)
+    return { filePath: picked.filePath }
+  })
+
+  ipcMain.handle('cover:clear', (_event, entryId: string) => {
+    const updated = updateEntry(db, entryId, { cover: null })
+    deleteEntryCover(userData, entryId)
+    return updated
   })
 
   ipcMain.handle('io:exportLibrary', async () => {

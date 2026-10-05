@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS entries (
   notes TEXT NOT NULL DEFAULT '',
   tags_json TEXT NOT NULL DEFAULT '[]',
   is_power INTEGER NOT NULL DEFAULT 0,
+  rating INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   audio_json TEXT,
@@ -42,5 +43,9 @@ export function migrate(db: AppDatabase): void {
     .map((column) => column.name)
   if (!columns.includes('cover_json')) {
     db.exec('ALTER TABLE entries ADD COLUMN cover_json TEXT')
+  }
+  if (!columns.includes('rating')) {
+    db.exec('ALTER TABLE entries ADD COLUMN rating INTEGER NOT NULL DEFAULT 0')
+    db.exec('UPDATE entries SET rating = 5 WHERE is_power = 1 AND rating = 0')
   }
 }

@@ -22,6 +22,30 @@ function extensionForMime(mime: string): string {
   return 'img'
 }
 
+function writeCoverFile(
+  userData: string,
+  entryId: string,
+  relativePath: string,
+  originalName: string,
+  write: (target: string) => void,
+): CoverRef {
+  const coverRoot = coverRootFor(userData)
+  const dir = entryDir(coverRoot, entryId)
+  const staging = join(userData, `.cover-staging-${assertEntryId(entryId)}`)
+  rmSync(staging, { recursive: true, force: true })
+  mkdirSync(staging, { recursive: true })
+  try {
+    write(join(staging, relativePath))
+    rmSync(dir, { recursive: true, force: true })
+    mkdirSync(coverRoot, { recursive: true })
+    renameSync(staging, dir)
+  } catch (error) {
+    rmSync(staging, { recursive: true, force: true })
+    throw error
+  }
+  return { relativePath, originalName }
+}
+
 export function writeCoverFromDataUrl(
   userData: string,
   entryId: string,
@@ -35,21 +59,21 @@ export function writeCoverFromDataUrl(
 
   const originalName = `cover.${extensionForMime(mime)}`
   const relativePath = sanitizeFilename(originalName)
-  const coverRoot = coverRootFor(userData)
-  const dir = entryDir(coverRoot, entryId)
-  const staging = join(userData, `.cover-staging-${assertEntryId(entryId)}`)
-  rmSync(staging, { recursive: true, force: true })
-  mkdirSync(staging, { recursive: true })
-  try {
-    writeFileSync(join(staging, relativePath), buffer)
-    rmSync(dir, { recursive: true, force: true })
-    mkdirSync(coverRoot, { recursive: true })
-    renameSync(staging, dir)
-  } catch (error) {
-    rmSync(staging, { recursive: true, force: true })
-    throw error
-  }
-  return { relativePath, originalName }
+  return writeCoverFile(userData, entryId, relativePath, originalName, (target) => {
+    writeFileSync(target, buffer)
+  })
+}
+
+export function copyLocalCover(
+  userData: string,
+  entryId: string,
+  sourcePath: string,
+): CoverRef {
+  const originalName = basename(sourcePath)
+  const relativePath = sanitizeFilename(originalName)
+  return writeCoverFile(userData, entryId, relativePath, originalName, (target) => {
+    copyFileSync(sourcePath, target)
+  })
 }
 
 export function deleteEntryCover(userData: string, entryId: string): void {
@@ -124,20 +148,5 @@ export function copyCoverBetweenEntries(
 ): CoverRef {
   const coverRoot = coverRootFor(userData)
   const sourcePath = resolveLocalCoverFile(coverRoot, sourceId, relativePath)
-  const originalName = basename(relativePath)
-  const safeName = sanitizeFilename(originalName)
-  const staging = join(userData, `.cover-staging-${assertEntryId(targetId)}`)
-  const dir = entryDir(coverRoot, targetId)
-  rmSync(staging, { recursive: true, force: true })
-  mkdirSync(staging, { recursive: true })
-  try {
-    copyFileSync(sourcePath, join(staging, safeName))
-    rmSync(dir, { recursive: true, force: true })
-    mkdirSync(coverRoot, { recursive: true })
-    renameSync(staging, dir)
-  } catch (error) {
-    rmSync(staging, { recursive: true, force: true })
-    throw error
-  }
-  return { relativePath: safeName, originalName }
+  return copyLocalCover(userData, targetId, sourcePath)
 }

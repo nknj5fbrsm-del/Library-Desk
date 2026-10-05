@@ -22,6 +22,9 @@ const desk: DeskApi = {
   },
   cover: {
     resolveUrl: (entryId: string) => ipcRenderer.invoke('cover:resolveUrl', entryId),
+    attachLocal: (entryId: string) => ipcRenderer.invoke('cover:attachLocal', entryId),
+    download: (entryId: string) => ipcRenderer.invoke('cover:download', entryId),
+    clear: (entryId: string) => ipcRenderer.invoke('cover:clear', entryId),
   },
   io: {
     exportLibrary: () => ipcRenderer.invoke('io:exportLibrary'),

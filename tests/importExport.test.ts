@@ -21,7 +21,7 @@ function bundleEntry(overrides: Partial<Entry> = {}): Entry {
     lyrics: 'words',
     notes: 'note',
     tags: ['Night', 'Drive'],
-    isPower: true,
+    rating: 5,
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
@@ -98,7 +98,7 @@ describe('importBundle', () => {
       stylePrompt: 'velvet',
       groupId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
       version: 4,
-      isPower: false,
+      rating: 0,
       tags: ['Solo'],
       audio: null,
     })
@@ -140,7 +140,7 @@ describe('importBundle', () => {
       lyrics: 'words',
       notes: 'note',
       tags: ['Night'],
-      isPower: true,
+      rating: 5,
       audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
     })
     const localEntry = createEntry(db, {
@@ -167,7 +167,7 @@ describe('importBundle', () => {
       lyrics: 'words',
       notes: 'note',
       tags: ['Night'],
-      isPower: true,
+      rating: 5,
       audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
     })
     const restoredLocal = getEntry(db, localEntry.id)

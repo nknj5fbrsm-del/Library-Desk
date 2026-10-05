@@ -1,4 +1,5 @@
-import type { AudioRef, DeskExportBundle, Entry } from './types'
+import type { AudioRef, DeskExportBundle, Entry, StarRating } from './types'
+import { normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
 export interface ExportAudioLocal {
@@ -18,7 +19,7 @@ export interface ExportEntryRow {
   lyrics: string
   notes: string
   tags: string[]
-  isPower: boolean
+  rating: StarRating
   createdAt: string
   updatedAt: string
   audio: ExportAudio
@@ -52,7 +53,7 @@ export function entryToExportRow(entry: Entry): ExportEntryRow {
     lyrics: entry.lyrics,
     notes: entry.notes,
     tags: [...entry.tags],
-    isPower: entry.isPower,
+    rating: entry.rating,
     createdAt: new Date(entry.createdAt).toISOString(),
     updatedAt: new Date(entry.updatedAt).toISOString(),
     audio: exportAudio(entry.audio),
@@ -92,6 +93,13 @@ function requireBoolean(value: unknown, field: string): boolean {
   return value
 }
 
+function parseRating(raw: Record<string, unknown>): StarRating {
+  if (raw.rating !== undefined) return normalizeRating(raw.rating)
+  if (raw.isPower === true) return 5
+  if (raw.isPower === false) return 0
+  return 0
+}
+
 function requireIso(value: unknown, field: string): number {
   if (typeof value !== 'string') invalid(field)
   const ms = Date.parse(value)
@@ -126,7 +134,7 @@ function parseEntry(raw: unknown): Entry {
     lyrics: requireText(raw.lyrics, 'lyrics'),
     notes: requireText(raw.notes, 'notes'),
     tags: requireTags(raw.tags),
-    isPower: requireBoolean(raw.isPower, 'isPower'),
+    rating: parseRating(raw),
     createdAt: requireIso(raw.createdAt, 'createdAt'),
     updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
     audio: parseAudio(raw.audio),

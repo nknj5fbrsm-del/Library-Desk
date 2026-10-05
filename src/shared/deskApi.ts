@@ -1,4 +1,5 @@
-import type { AudioRef, CoverRef, Entry, ImportLibraryResult, LibraryFacet, SortMode } from './types'
+import type { AudioRef, CoverRef, Entry, LibraryFacet, SortMode, StarRating } from './types'
+import type { ImportLibraryResult } from './types'
 
 export interface CreateEntryInput {
   title?: string
@@ -6,7 +7,7 @@ export interface CreateEntryInput {
   lyrics?: string
   notes?: string
   tags?: string[]
-  isPower?: boolean
+  rating?: StarRating
   audio?: AudioRef | null
   cover?: CoverRef | null
 }
@@ -37,6 +38,9 @@ export interface DeskApi {
   }
   cover: {
     resolveUrl(entryId: string): Promise<string | null>
+    attachLocal(entryId: string): Promise<Entry | null>
+    download(entryId: string): Promise<{ filePath: string } | null>
+    clear(entryId: string): Promise<Entry>
   }
   io: {
     exportLibrary(): Promise<{ filePath: string } | null>

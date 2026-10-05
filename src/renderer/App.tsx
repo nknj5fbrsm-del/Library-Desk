@@ -144,12 +144,15 @@ export default function App(): JSX.Element {
                 key={`${library.selectedEntry.id}:${library.editorRevision}`}
                 ref={editorRef}
                 entry={library.selectedEntry}
+                siblings={library.versionSiblings}
                 busy={library.busy}
                 onUpdate={library.updateEntry}
                 onDuplicate={library.duplicateEntry}
                 onCreateVersion={library.createVersion}
                 onDelete={library.deleteEntry}
+                onSelectVersion={library.select}
                 onAudioChange={library.syncEntry}
+                onCoverChange={library.syncEntry}
               />
             </>
           ) : (

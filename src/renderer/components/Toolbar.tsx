@@ -32,7 +32,7 @@ export function Toolbar({
   onExport,
   searchRef,
 }: ToolbarProps): JSX.Element {
-  const facetValue = facet === 'power' ? 'power' : 'all'
+  const facetValue = facet === 'rated' ? 'rated' : 'all'
   const tagValue = typeof facet === 'object' ? facet.tag : ''
   const tagKnown = tags.some(
     (tag) => tag.toLocaleLowerCase('de') === tagValue.toLocaleLowerCase('de'),
@@ -55,10 +55,10 @@ export function Toolbar({
         <select
           aria-label="Filter"
           value={facetValue}
-          onChange={(event) => onFacet(event.target.value === 'power' ? 'power' : 'all')}
+          onChange={(event) => onFacet(event.target.value === 'rated' ? 'rated' : 'all')}
         >
           <option value="all">Alle</option>
-          <option value="power">Power</option>
+          <option value="rated">Mit Sternen</option>
         </select>
         <select
           aria-label="Tag"

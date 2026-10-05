@@ -7,6 +7,9 @@ export interface CoverRef {
   originalName: string
 }
 
+/** 0 = keine Bewertung, 1–5 Sterne */
+export type StarRating = 0 | 1 | 2 | 3 | 4 | 5
+
 export interface Entry {
   id: string
   groupId: string
@@ -16,14 +19,14 @@ export interface Entry {
   lyrics: string
   notes: string
   tags: string[]
-  isPower: boolean
+  rating: StarRating
   createdAt: number
   updatedAt: number
   audio: AudioRef | null
   cover: CoverRef | null
 }
 
-export type LibraryFacet = 'all' | 'power' | { tag: string }
+export type LibraryFacet = 'all' | 'rated' | { tag: string }
 export type SortMode = 'newest' | 'title' | 'updated'
 
 export interface VersionGroup {
@@ -43,4 +46,12 @@ export interface ImportLibraryResult {
   created: number
   updated: number
   skipped: number
+}
+
+export function normalizeRating(value: unknown): StarRating {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0
+  const n = Math.trunc(value)
+  if (n <= 0) return 0
+  if (n >= 5) return 5
+  return n as StarRating
 }

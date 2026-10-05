@@ -39,7 +39,7 @@ describe('entriesRepo', () => {
       lyrics: 'la',
       notes: 'n',
       tags: ['  Night ', ''],
-      isPower: true,
+      rating: 5,
       audio: { kind: 'url', href: 'https://example.com/a.mp3', label: 'demo' },
     })
 
@@ -50,7 +50,7 @@ describe('entriesRepo', () => {
     )
     expect(created.id).not.toBe(created.groupId)
     expect(created.tags).toEqual(['Night'])
-    expect(created.isPower).toBe(true)
+    expect(created.rating).toBe(5)
     expect(created.createdAt).toBe(now)
     expect(created.updatedAt).toBe(now)
     expect(created.audio).toEqual({
@@ -68,7 +68,7 @@ describe('entriesRepo', () => {
     expect(defaults.lyrics).toBe('')
     expect(defaults.notes).toBe('')
     expect(defaults.tags).toEqual([])
-    expect(defaults.isPower).toBe(false)
+    expect(defaults.rating).toBe(0)
     expect(defaults.audio).toBeNull()
     expect(defaults.version).toBe(1)
   })
@@ -83,7 +83,7 @@ describe('entriesRepo', () => {
       lyrics: 'words',
       notes: 'memo',
       tags: [' a ', 'b'],
-      isPower: true,
+      rating: 5,
       audio: { kind: 'local', relativePath: 'audio/x/f.mp3', originalName: 'f.mp3' },
     })
 
@@ -92,7 +92,7 @@ describe('entriesRepo', () => {
     expect(updated.lyrics).toBe('words')
     expect(updated.notes).toBe('memo')
     expect(updated.tags).toEqual(['a', 'b'])
-    expect(updated.isPower).toBe(true)
+    expect(updated.rating).toBe(5)
     expect(updated.audio).toEqual({
       kind: 'local',
       relativePath: 'audio/x/f.mp3',
@@ -117,7 +117,7 @@ describe('entriesRepo', () => {
       title: 'Power cut',
       stylePrompt: 'Velvet haze',
       tags: ['Night'],
-      isPower: true,
+      rating: 5,
     })
     const tagged = createEntry(db, {
       title: 'Plain',
@@ -129,7 +129,7 @@ describe('entriesRepo', () => {
 
     const base = { search: '', facet: 'all' as const, sort: 'newest' as const }
 
-    expect(listEntries(db, { ...base, facet: 'power' }).map((e) => e.id)).toEqual([
+    expect(listEntries(db, { ...base, facet: 'rated' }).map((e) => e.id)).toEqual([
       power.id,
     ])
     expect(
@@ -148,7 +148,7 @@ describe('entriesRepo', () => {
       power.id,
     ])
     expect(
-      listEntries(db, { search: 'velvet', facet: 'power', sort: 'newest' }).map(
+      listEntries(db, { search: 'velvet', facet: 'rated', sort: 'newest' }).map(
         (e) => e.id,
       ),
     ).toEqual([power.id])
@@ -182,7 +182,7 @@ describe('entriesRepo', () => {
       lyrics: 'ly',
       notes: 'no',
       tags: ['t'],
-      isPower: true,
+      rating: 5,
       audio: { kind: 'url', href: 'https://example.com/s.mp3' },
     })
     now = 9_000
@@ -197,7 +197,7 @@ describe('entriesRepo', () => {
     expect(next.lyrics).toBe(original.lyrics)
     expect(next.notes).toBe(original.notes)
     expect(next.tags).toEqual(original.tags)
-    expect(next.isPower).toBe(true)
+    expect(next.rating).toBe(5)
     expect(next.audio).toEqual(original.audio)
     expect(next.createdAt).toBe(now)
     expect(next.updatedAt).toBe(now)
@@ -213,7 +213,7 @@ describe('entriesRepo', () => {
       title: 'Song',
       stylePrompt: 'style',
       tags: ['t'],
-      isPower: true,
+      rating: 5,
     })
     now = 8_000
 
@@ -225,7 +225,7 @@ describe('entriesRepo', () => {
     expect(copy.title).toBe('Song')
     expect(copy.stylePrompt).toBe('style')
     expect(copy.tags).toEqual(['t'])
-    expect(copy.isPower).toBe(true)
+    expect(copy.rating).toBe(5)
     expect(copy.createdAt).toBe(now)
     expect(getEntry(db, original.id)?.groupId).toBe(original.groupId)
   })

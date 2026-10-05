@@ -1,6 +1,7 @@
 import { groupEntriesForDisplay } from '@shared/versionGroups'
 import type { Entry } from '@shared/types'
 import { CoverThumb } from '@renderer/components/CoverThumb'
+import { StarRatingDisplay } from '@renderer/components/StarRating'
 
 interface LibraryListProps {
   entries: Entry[]
@@ -50,7 +51,7 @@ export function LibraryList({
           {groups.map((group) => {
             const showChips = group.versions.length >= 2
             const active = group.versions.some((entry) => entry.id === selectedId)
-            const isPower = group.versions.some((entry) => entry.isPower)
+            const rating = Math.max(...group.versions.map((entry) => entry.rating)) as Entry['rating']
             const hasAudio = group.versions.some((entry) => entry.audio !== null)
             return (
               <li key={group.key} className={active ? 'group is-active' : 'group'}>
@@ -60,9 +61,9 @@ export function LibraryList({
                   aria-current={active && !showChips ? 'true' : undefined}
                   onClick={() => onSelect(group.representative.id)}
                 >
-                  <CoverThumb entry={group.representative} size="list" />
+                  <CoverThumb entry={group.representative} />
                   <span className="group-title">{group.representative.title}</span>
-                  {isPower ? <span className="power-mark">Power</span> : null}
+                  <StarRatingDisplay value={rating} />
                   {hasAudio ? (
                     <span className="audio-mark" title="Audio">
                       <AudioIcon />

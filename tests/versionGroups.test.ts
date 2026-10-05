@@ -11,7 +11,7 @@ function entry(
     lyrics: '',
     notes: '',
     tags: [],
-    isPower: false,
+    rating: 0,
     createdAt: 0,
     updatedAt: 0,
     audio: null,

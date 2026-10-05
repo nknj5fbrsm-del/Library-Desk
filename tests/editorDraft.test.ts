@@ -7,7 +7,7 @@ const current: EditorDraftFields = {
   lyrics: 'alte zeile',
   notes: '',
   tags: ['nacht'],
-  isPower: false,
+  rating: 0,
 }
 
 const imported: EditorDraftFields = {

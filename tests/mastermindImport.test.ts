@@ -35,7 +35,7 @@ describe('mapMastermindItem', () => {
       lyrics: 'Verse',
       notes: 'Notiz',
       tags: ['Pop', 'Dark'],
-      isPower: true,
+      rating: 5,
       createdAt: 1_700_000_000_000,
       updatedAt: 1_700_000_100_000,
     })

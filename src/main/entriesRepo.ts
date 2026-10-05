@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
-import type { AudioRef, CoverRef, Entry } from '../shared/types'
+import type { AudioRef, CoverRef, Entry, StarRating } from '../shared/types'
+import { normalizeRating } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
 
@@ -16,6 +17,7 @@ interface EntryRow {
   notes: string
   tags_json: string
   is_power: number
+  rating: number | null
   created_at: number
   updated_at: number
   audio_json: string | null
@@ -25,6 +27,11 @@ interface EntryRow {
 function normalizeTags(tags: string[] | undefined): string[] {
   if (!tags) return []
   return tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0)
+}
+
+function ratingFromRow(row: EntryRow): StarRating {
+  if (row.rating != null) return normalizeRating(row.rating)
+  return row.is_power === 1 ? 5 : 0
 }
 
 function rowToEntry(row: EntryRow): Entry {
@@ -37,7 +44,7 @@ function rowToEntry(row: EntryRow): Entry {
     lyrics: row.lyrics,
     notes: row.notes,
     tags: JSON.parse(row.tags_json) as string[],
-    isPower: row.is_power === 1,
+    rating: ratingFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     audio: row.audio_json ? (JSON.parse(row.audio_json) as AudioRef) : null,
@@ -68,7 +75,7 @@ function insertGenerated(
     lyrics: string
     notes: string
     tags: string[]
-    isPower: boolean
+    rating: StarRating
     audio: AudioRef | null
     cover: CoverRef | null
   },
@@ -78,8 +85,8 @@ function insertGenerated(
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
-      tags_json, is_power, created_at, updated_at, audio_json, cover_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.groupId,
@@ -89,7 +96,8 @@ function insertGenerated(
     fields.lyrics,
     fields.notes,
     JSON.stringify(fields.tags),
-    fields.isPower ? 1 : 0,
+    fields.rating > 0 ? 1 : 0,
+    fields.rating,
     timestamp,
     timestamp,
     fields.audio ? JSON.stringify(fields.audio) : null,
@@ -104,7 +112,7 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     db.prepare(
       `UPDATE entries SET
         group_id = ?, version = ?, title = ?, style_prompt = ?, lyrics = ?, notes = ?,
-        tags_json = ?, is_power = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?
+        tags_json = ?, is_power = ?, rating = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?
       WHERE id = ?`,
     ).run(
       entry.groupId,
@@ -114,7 +122,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
       entry.lyrics,
       entry.notes,
       JSON.stringify(entry.tags),
-      entry.isPower ? 1 : 0,
+      entry.rating > 0 ? 1 : 0,
+      entry.rating,
       entry.createdAt,
       entry.updatedAt,
       entry.audio ? JSON.stringify(entry.audio) : null,
@@ -127,8 +136,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
-      tags_json, is_power, created_at, updated_at, audio_json, cover_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     entry.id,
     entry.groupId,
@@ -138,7 +147,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     entry.lyrics,
     entry.notes,
     JSON.stringify(entry.tags),
-    entry.isPower ? 1 : 0,
+    entry.rating > 0 ? 1 : 0,
+    entry.rating,
     entry.createdAt,
     entry.updatedAt,
     entry.audio ? JSON.stringify(entry.audio) : null,
@@ -156,7 +166,7 @@ export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
     lyrics: input.lyrics ?? '',
     notes: input.notes ?? '',
     tags: normalizeTags(input.tags),
-    isPower: input.isPower ?? false,
+    rating: normalizeRating(input.rating ?? 0),
     audio: input.audio ?? null,
     cover: input.cover ?? null,
   })
@@ -166,10 +176,12 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
   const existing = requireEntry(db, id)
   const audio = patch.audio !== undefined ? patch.audio : existing.audio
   const cover = patch.cover !== undefined ? patch.cover : existing.cover
+  const rating =
+    patch.rating !== undefined ? normalizeRating(patch.rating) : existing.rating
   db.prepare(
     `UPDATE entries SET
       title = ?, style_prompt = ?, lyrics = ?, notes = ?, tags_json = ?,
-      is_power = ?, updated_at = ?, audio_json = ?, cover_json = ?
+      is_power = ?, rating = ?, updated_at = ?, audio_json = ?, cover_json = ?
     WHERE id = ?`,
   ).run(
     patch.title !== undefined ? normalizeTitle(patch.title) : existing.title,
@@ -177,7 +189,8 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     patch.lyrics !== undefined ? patch.lyrics : existing.lyrics,
     patch.notes !== undefined ? patch.notes : existing.notes,
     JSON.stringify(patch.tags !== undefined ? normalizeTags(patch.tags) : existing.tags),
-    (patch.isPower !== undefined ? patch.isPower : existing.isPower) ? 1 : 0,
+    rating > 0 ? 1 : 0,
+    rating,
     Date.now(),
     audio ? JSON.stringify(audio) : null,
     cover ? JSON.stringify(cover) : null,
@@ -202,8 +215,8 @@ export function listEntries(db: AppDatabase, query: ListQuery): Entry[] {
     params.push(search)
   }
 
-  if (query.facet === 'power') {
-    where.push('is_power = 1')
+  if (query.facet === 'rated') {
+    where.push('rating >= 1')
   } else if (typeof query.facet === 'object') {
     where.push(
       `EXISTS (SELECT 1 FROM json_each(tags_json) WHERE LOWER(value) = LOWER(?))`,
@@ -229,7 +242,7 @@ function copiedContent(source: Entry): {
   lyrics: string
   notes: string
   tags: string[]
-  isPower: boolean
+  rating: StarRating
   audio: AudioRef | null
   cover: CoverRef | null
 } {
@@ -239,7 +252,7 @@ function copiedContent(source: Entry): {
     lyrics: source.lyrics,
     notes: source.notes,
     tags: source.tags,
-    isPower: source.isPower,
+    rating: source.rating,
     audio: source.audio,
     cover: source.cover,
   }
