@@ -262,8 +262,8 @@ select,
 }
 
 .cover-thumb-detail {
-  width: 112px;
-  height: 112px;
+  width: 148px;
+  height: 148px;
   border-radius: 6px;
 }
 
@@ -271,8 +271,14 @@ select,
   flex: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 112px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cover-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .cover-preview-btn {
@@ -284,8 +290,8 @@ select,
 }
 
 .cover-placeholder {
-  width: 112px;
-  height: 112px;
+  width: 148px;
+  height: 148px;
   display: grid;
   place-items: center;
   border: 1px dashed var(--line);
@@ -297,13 +303,37 @@ select,
 
 .cover-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 4px;
 }
 
-.cover-actions .btn {
-  font-size: 12px;
-  padding: 2px 8px;
+.cover-icon-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  padding: 0;
+  cursor: pointer;
+}
+
+.cover-icon-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.cover-icon-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.cover-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .cover-note {
