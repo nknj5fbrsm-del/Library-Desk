@@ -72,6 +72,7 @@ function AudioPanel({
   entry: Entry
   onAudioChange: (entry: Entry) => void
 }): JSX.Element {
+  const [open, setOpen] = useState(() => entry.audio != null)
   const [urlDraft, setUrlDraft] = useState('')
   const [audioBusy, setAudioBusy] = useState(false)
   const [audioNote, setAudioNote] = useState<string | null>(null)
@@ -163,55 +164,66 @@ function AudioPanel({
   }
 
   return (
-    <section className="audio-panel" aria-label="Audio">
-      <span className="field-label">Audio</span>
-      <div className="audio-actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={audioBusy}
-          onClick={() => void runAudio(() => getDesk().audio.attachLocal(entryIdRef.current))}
-        >
-          Lokale Datei…
-        </button>
-        <input
-          className="audio-url"
-          aria-label="Audio-URL"
-          placeholder="https://"
-          autoComplete="off"
-          spellCheck={false}
-          value={urlDraft}
-          onChange={(event) => writeUrlDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return
-            event.preventDefault()
-            void submitUrl()
-          }}
-        />
-        <button type="button" className="btn" disabled={audioBusy} onClick={() => void submitUrl()}>
-          URL setzen
-        </button>
-        {entry.audio ? (
-          <button
-            type="button"
-            className="btn"
-            disabled={audioBusy}
-            onClick={() => void runAudio(() => getDesk().audio.clear(entryIdRef.current))}
-          >
-            Entfernen
-          </button>
-        ) : null}
-      </div>
-      {sourceLabel ? <p className="audio-source">{sourceLabel}</p> : null}
-      {missingFile ? (
-        <p className="audio-missing" role="alert">
-          Audiodatei fehlt — bitte neu anhängen
-        </p>
-      ) : null}
-      {audioNote ? (
-        <p className="audio-missing" role="alert">
-          {audioNote}
-        </p>
+    <section className="editor-accordion" aria-label="Audio">
+      <button
+        type="button"
+        className={open ? 'btn editor-accordion-toggle is-open' : 'btn editor-accordion-toggle'}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Audio{entry.audio ? ' · gesetzt' : ''}
+      </button>
+      {open ? (
+        <div className="editor-accordion-body">
+          <div className="editor-actions-row">
+            <button
+              type="button"
+              className="btn"
+              disabled={audioBusy}
+              onClick={() => void runAudio(() => getDesk().audio.attachLocal(entryIdRef.current))}
+            >
+              Lokale Datei…
+            </button>
+            <input
+              className="editor-url"
+              aria-label="Audio-URL"
+              placeholder="https://"
+              autoComplete="off"
+              spellCheck={false}
+              value={urlDraft}
+              onChange={(event) => writeUrlDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter') return
+                event.preventDefault()
+                void submitUrl()
+              }}
+            />
+            <button type="button" className="btn" disabled={audioBusy} onClick={() => void submitUrl()}>
+              URL setzen
+            </button>
+            {entry.audio ? (
+              <button
+                type="button"
+                className="btn"
+                disabled={audioBusy}
+                onClick={() => void runAudio(() => getDesk().audio.clear(entryIdRef.current))}
+              >
+                Entfernen
+              </button>
+            ) : null}
+          </div>
+          {sourceLabel ? <p className="audio-source">{sourceLabel}</p> : null}
+          {missingFile ? (
+            <p className="audio-missing" role="alert">
+              Audiodatei fehlt — bitte neu anhängen
+            </p>
+          ) : null}
+          {audioNote ? (
+            <p className="audio-missing" role="alert">
+              {audioNote}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {playbackSrc ? (
         <MiniPlayer
@@ -273,6 +285,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [copyNote, setCopyNote] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(() => entry.published)
 
   const draftRef = useRef(draft)
   const tagInputRef = useRef('')
@@ -607,106 +620,40 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         ) : null}
       </div>
       <AudioPanel entry={entry} onAudioChange={onAudioChange} />
-      <section className="publish-panel" aria-label="Veröffentlicht">
-        <span className="field-label">Veröffentlicht</span>
-        <div className="publish-actions">
-          <label className="publish-check">
-            <input
-              type="checkbox"
-              aria-label="Veröffentlicht"
-              checked={draft.published}
-              onChange={(event) => {
-                const published = event.target.checked
-                if (published && draftRef.current.publishLinks.length === 0) {
-                  patchDraft(
-                    {
-                      published: true,
-                      publishLinks: [{ id: crypto.randomUUID(), label: '', href: '' }],
-                    },
-                    true,
-                  )
-                  return
-                }
-                patchDraft({ published }, true)
-              }}
-            />
-          </label>
-          {draft.published && draft.publishLinks[0] ? (
-            <>
-              <input
-                className="publish-label"
-                aria-label="Link-Label"
-                placeholder="YouTube, Spotify…"
-                autoComplete="off"
-                value={draft.publishLinks[0].label}
-                onChange={(event) => {
-                  const label = event.target.value
-                  const id = draftRef.current.publishLinks[0]?.id
-                  if (!id) return
-                  patchDraft(
-                    {
-                      publishLinks: draftRef.current.publishLinks.map((item) =>
-                        item.id === id ? { ...item, label } : item,
-                      ),
-                    },
-                    true,
-                  )
-                }}
-              />
-              <input
-                className="publish-url"
-                aria-label="Link-URL"
-                placeholder="https://"
-                autoComplete="off"
-                spellCheck={false}
-                value={draft.publishLinks[0].href}
-                onChange={(event) => {
-                  const href = event.target.value
-                  const id = draftRef.current.publishLinks[0]?.id
-                  if (!id) return
-                  patchDraft(
-                    {
-                      publishLinks: draftRef.current.publishLinks.map((item) =>
-                        item.id === id ? { ...item, href } : item,
-                      ),
-                    },
-                    true,
-                  )
-                }}
-              />
-              <button
-                type="button"
-                className="btn"
-                disabled={!draft.publishLinks[0].href.trim()}
-                onClick={() =>
-                  void getDesk().shell.openExternal(draft.publishLinks[0]!.href.trim())
-                }
-              >
-                Öffnen
-              </button>
-              <button
-                type="button"
-                className="btn"
-                aria-label="Link entfernen"
-                onClick={() => {
-                  const id = draftRef.current.publishLinks[0]?.id
-                  if (!id) return
-                  const rest = draftRef.current.publishLinks.filter((item) => item.id !== id)
-                  patchDraft(
-                    rest.length === 0 ? { published: false, publishLinks: [] } : { publishLinks: rest },
-                    true,
-                  )
-                }}
-              >
-                Entfernen
-              </button>
-            </>
-          ) : null}
-        </div>
-        {draft.published
-          ? draft.publishLinks.slice(1).map((link) => (
-              <div key={link.id} className="publish-actions">
-                <span className="publish-check-spacer" aria-hidden="true" />
+      <section className="editor-accordion" aria-label="Veröffentlicht">
+        <button
+          type="button"
+          className={
+            publishOpen ? 'btn editor-accordion-toggle is-open' : 'btn editor-accordion-toggle'
+          }
+          aria-expanded={publishOpen}
+          onClick={() => {
+            if (publishOpen) {
+              setPublishOpen(false)
+              return
+            }
+            setPublishOpen(true)
+            const current = draftRef.current
+            if (!current.published || current.publishLinks.length === 0) {
+              patchDraft(
+                {
+                  published: true,
+                  publishLinks:
+                    current.publishLinks.length > 0
+                      ? current.publishLinks
+                      : [{ id: crypto.randomUUID(), label: '', href: '' }],
+                },
+                true,
+              )
+            }
+          }}
+        >
+          Veröffentlicht{draft.published ? ' · aktiv' : ''}
+        </button>
+        {publishOpen ? (
+          <div className="editor-accordion-body">
+            {draft.publishLinks.map((link) => (
+              <div key={link.id} className="editor-actions-row">
                 <input
                   className="publish-label"
                   aria-label="Link-Label"
@@ -726,7 +673,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
                   }}
                 />
                 <input
-                  className="publish-url"
+                  className="editor-url"
                   aria-label="Link-URL"
                   placeholder="https://"
                   autoComplete="off"
@@ -770,28 +717,38 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
                   Entfernen
                 </button>
               </div>
-            ))
-          : null}
-        {draft.published ? (
-          <div className="publish-actions">
-            <span className="publish-check-spacer" aria-hidden="true" />
-            <button
-              type="button"
-              className="btn"
-              onClick={() =>
-                patchDraft(
-                  {
-                    publishLinks: [
-                      ...draftRef.current.publishLinks,
-                      { id: crypto.randomUUID(), label: '', href: '' },
-                    ],
-                  },
-                  true,
-                )
-              }
-            >
-              + Link
-            </button>
+            ))}
+            <div className="editor-actions-row">
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
+                  patchDraft(
+                    {
+                      publishLinks: [
+                        ...draftRef.current.publishLinks,
+                        { id: crypto.randomUUID(), label: '', href: '' },
+                      ],
+                    },
+                    true,
+                  )
+                }
+              >
+                + Link
+              </button>
+              {draft.published ? (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setPublishOpen(false)
+                    patchDraft({ published: false }, true)
+                  }}
+                >
+                  Aufheben
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </section>
