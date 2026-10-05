@@ -44,7 +44,9 @@ function createWindow(): void {
     },
   })
 
-  if (process.platform === 'darwin' && icon) {
+  // Packaged Mac apps use the bundle .icns (system squircle mask).
+  // setIcon(PNG) draws a full square and looks oversized in the Dock.
+  if (process.platform === 'darwin' && icon && !app.isPackaged) {
     app.dock?.setIcon(icon)
   }
 
