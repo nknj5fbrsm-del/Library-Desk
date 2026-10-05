@@ -237,6 +237,49 @@ describe('entriesRepo', () => {
     expect(listEntries(db, { search: '', facet: 'all', sort: 'newest' })).toEqual([])
   })
 
+  it('persists published flag and publish links; filter published', () => {
+    const live = createEntry(db, {
+      title: 'Live',
+      published: true,
+      publishLinks: [
+        { id: 'l1', label: 'YouTube', href: 'https://youtu.be/abc' },
+        { id: 'l2', label: 'x', href: '  ' },
+      ],
+    })
+    const draft = createEntry(db, { title: 'Draft' })
+    expect(live.published).toBe(true)
+    expect(live.publishLinks).toEqual([
+      { id: 'l1', label: 'YouTube', href: 'https://youtu.be/abc' },
+    ])
+    expect(draft.published).toBe(false)
+    expect(draft.publishLinks).toEqual([])
+
+    const updated = updateEntry(db, live.id, { published: false })
+    expect(updated.published).toBe(false)
+    expect(updated.publishLinks).toEqual(live.publishLinks)
+
+    const base = { search: '', facet: 'all' as const, sort: 'newest' as const }
+    expect(listEntries(db, { ...base, facet: 'published' }).map((e) => e.id)).toEqual([])
+    updateEntry(db, live.id, { published: true })
+    expect(listEntries(db, { ...base, facet: 'published' }).map((e) => e.id)).toEqual([
+      live.id,
+    ])
+  })
+
+  it('copies published state on duplicate and version', () => {
+    const original = createEntry(db, {
+      title: 'Pub',
+      published: true,
+      publishLinks: [{ id: 'p1', label: 'SC', href: 'https://soundcloud.com/x' }],
+    })
+    const copy = duplicateEntry(db, original.id)
+    expect(copy.published).toBe(true)
+    expect(copy.publishLinks).toEqual(original.publishLinks)
+    const version = createVersion(db, original.id)
+    expect(version.published).toBe(true)
+    expect(version.publishLinks).toEqual(original.publishLinks)
+  })
+
   it('settings roundtrip and overwrite', () => {
     expect(getSetting(db, 'sort')).toBeNull()
     setSetting(db, 'sort', 'title')

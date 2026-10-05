@@ -1,4 +1,4 @@
-import type { StarRating } from './types'
+import type { PublishLink, StarRating } from './types'
 
 export interface EditorDraftFields {
   title: string
@@ -7,6 +7,8 @@ export interface EditorDraftFields {
   notes: string
   tags: readonly string[]
   rating: StarRating
+  published: boolean
+  publishLinks: readonly PublishLink[]
 }
 
 export function sameEditorDraft(a: EditorDraftFields, b: EditorDraftFields): boolean {
@@ -16,8 +18,16 @@ export function sameEditorDraft(a: EditorDraftFields, b: EditorDraftFields): boo
     a.lyrics === b.lyrics &&
     a.notes === b.notes &&
     a.rating === b.rating &&
+    a.published === b.published &&
     a.tags.length === b.tags.length &&
-    a.tags.every((tag, index) => tag === b.tags[index])
+    a.tags.every((tag, index) => tag === b.tags[index]) &&
+    a.publishLinks.length === b.publishLinks.length &&
+    a.publishLinks.every(
+      (link, index) =>
+        link.id === b.publishLinks[index]?.id &&
+        link.label === b.publishLinks[index]?.label &&
+        link.href === b.publishLinks[index]?.href,
+    )
   )
 }
 

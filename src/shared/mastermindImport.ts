@@ -127,6 +127,8 @@ export function mapMastermindItem(raw: unknown): MastermindMapResult {
       notes: asString(raw.notes),
       tags: tagsFromMastermind(raw),
       rating,
+      published: false,
+      publishLinks: [],
       createdAt: timestamp,
       updatedAt: lastSaved,
       audio: null,

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
-import type { AudioRef, CoverRef, Entry, StarRating } from '../shared/types'
-import { normalizeRating } from '../shared/types'
+import type { AudioRef, CoverRef, Entry, PublishLink, StarRating } from '../shared/types'
+import { normalizePublishLinks, normalizeRating } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
 
@@ -22,6 +22,8 @@ interface EntryRow {
   updated_at: number
   audio_json: string | null
   cover_json: string | null
+  published: number | null
+  publish_links_json: string | null
 }
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -32,6 +34,15 @@ function normalizeTags(tags: string[] | undefined): string[] {
 function ratingFromRow(row: EntryRow): StarRating {
   if (row.rating != null) return normalizeRating(row.rating)
   return row.is_power === 1 ? 5 : 0
+}
+
+function publishLinksFromRow(row: EntryRow): PublishLink[] {
+  if (!row.publish_links_json) return []
+  try {
+    return normalizePublishLinks(JSON.parse(row.publish_links_json) as PublishLink[])
+  } catch {
+    return []
+  }
 }
 
 function rowToEntry(row: EntryRow): Entry {
@@ -45,6 +56,8 @@ function rowToEntry(row: EntryRow): Entry {
     notes: row.notes,
     tags: JSON.parse(row.tags_json) as string[],
     rating: ratingFromRow(row),
+    published: row.published === 1,
+    publishLinks: publishLinksFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     audio: row.audio_json ? (JSON.parse(row.audio_json) as AudioRef) : null,
@@ -76,17 +89,21 @@ function insertGenerated(
     notes: string
     tags: string[]
     rating: StarRating
+    published: boolean
+    publishLinks: PublishLink[]
     audio: AudioRef | null
     cover: CoverRef | null
   },
 ): Entry {
   const id = randomUUID()
   const timestamp = Date.now()
+  const publishLinks = normalizePublishLinks(fields.publishLinks)
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
-      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
+      published, publish_links_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.groupId,
@@ -102,17 +119,21 @@ function insertGenerated(
     timestamp,
     fields.audio ? JSON.stringify(fields.audio) : null,
     fields.cover ? JSON.stringify(fields.cover) : null,
+    fields.published ? 1 : 0,
+    JSON.stringify(publishLinks),
   )
   return requireEntry(db, id)
 }
 
 export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'updated' {
+  const publishLinks = normalizePublishLinks(entry.publishLinks)
   const existing = getEntry(db, entry.id)
   if (existing) {
     db.prepare(
       `UPDATE entries SET
         group_id = ?, version = ?, title = ?, style_prompt = ?, lyrics = ?, notes = ?,
-        tags_json = ?, is_power = ?, rating = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?
+        tags_json = ?, is_power = ?, rating = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?,
+        published = ?, publish_links_json = ?
       WHERE id = ?`,
     ).run(
       entry.groupId,
@@ -128,6 +149,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
       entry.updatedAt,
       entry.audio ? JSON.stringify(entry.audio) : null,
       entry.cover ? JSON.stringify(entry.cover) : null,
+      entry.published ? 1 : 0,
+      JSON.stringify(publishLinks),
       entry.id,
     )
     return 'updated'
@@ -136,8 +159,9 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
-      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
+      published, publish_links_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     entry.id,
     entry.groupId,
@@ -153,6 +177,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     entry.updatedAt,
     entry.audio ? JSON.stringify(entry.audio) : null,
     entry.cover ? JSON.stringify(entry.cover) : null,
+    entry.published ? 1 : 0,
+    JSON.stringify(publishLinks),
   )
   return 'created'
 }
@@ -167,6 +193,8 @@ export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
     notes: input.notes ?? '',
     tags: normalizeTags(input.tags),
     rating: normalizeRating(input.rating ?? 0),
+    published: input.published === true,
+    publishLinks: normalizePublishLinks(input.publishLinks),
     audio: input.audio ?? null,
     cover: input.cover ?? null,
   })
@@ -178,10 +206,16 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
   const cover = patch.cover !== undefined ? patch.cover : existing.cover
   const rating =
     patch.rating !== undefined ? normalizeRating(patch.rating) : existing.rating
+  const published = patch.published !== undefined ? patch.published === true : existing.published
+  const publishLinks =
+    patch.publishLinks !== undefined
+      ? normalizePublishLinks(patch.publishLinks)
+      : existing.publishLinks
   db.prepare(
     `UPDATE entries SET
       title = ?, style_prompt = ?, lyrics = ?, notes = ?, tags_json = ?,
-      is_power = ?, rating = ?, updated_at = ?, audio_json = ?, cover_json = ?
+      is_power = ?, rating = ?, updated_at = ?, audio_json = ?, cover_json = ?,
+      published = ?, publish_links_json = ?
     WHERE id = ?`,
   ).run(
     patch.title !== undefined ? normalizeTitle(patch.title) : existing.title,
@@ -194,6 +228,8 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     Date.now(),
     audio ? JSON.stringify(audio) : null,
     cover ? JSON.stringify(cover) : null,
+    published ? 1 : 0,
+    JSON.stringify(publishLinks),
     id,
   )
   return requireEntry(db, id)
@@ -217,6 +253,8 @@ export function listEntries(db: AppDatabase, query: ListQuery): Entry[] {
 
   if (query.facet === 'rated') {
     where.push('rating >= 1')
+  } else if (query.facet === 'published') {
+    where.push('published = 1')
   } else if (typeof query.facet === 'object') {
     where.push(
       `EXISTS (SELECT 1 FROM json_each(tags_json) WHERE LOWER(value) = LOWER(?))`,
@@ -243,6 +281,8 @@ function copiedContent(source: Entry): {
   notes: string
   tags: string[]
   rating: StarRating
+  published: boolean
+  publishLinks: PublishLink[]
   audio: AudioRef | null
   cover: CoverRef | null
 } {
@@ -253,6 +293,8 @@ function copiedContent(source: Entry): {
     notes: source.notes,
     tags: source.tags,
     rating: source.rating,
+    published: source.published,
+    publishLinks: source.publishLinks.map((link) => ({ ...link })),
     audio: source.audio,
     cover: source.cover,
   }

@@ -1,4 +1,12 @@
-import type { AudioRef, CoverRef, Entry, LibraryFacet, SortMode, StarRating } from './types'
+import type {
+  AudioRef,
+  CoverRef,
+  Entry,
+  LibraryFacet,
+  PublishLink,
+  SortMode,
+  StarRating,
+} from './types'
 import type { ImportLibraryResult } from './types'
 
 export interface CreateEntryInput {
@@ -8,6 +16,8 @@ export interface CreateEntryInput {
   notes?: string
   tags?: string[]
   rating?: StarRating
+  published?: boolean
+  publishLinks?: PublishLink[]
   audio?: AudioRef | null
   cover?: CoverRef | null
 }

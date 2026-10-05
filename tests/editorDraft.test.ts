@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyExternalEntry, type EditorDraftFields } from '../src/shared/editorDraft'
+import { applyExternalEntry, sameEditorDraft, type EditorDraftFields } from '../src/shared/editorDraft'
+import { normalizePublishLinks } from '../src/shared/types'
 
 const current: EditorDraftFields = {
   title: 'Alt',
@@ -8,6 +9,8 @@ const current: EditorDraftFields = {
   notes: '',
   tags: ['nacht'],
   rating: 0,
+  published: false,
+  publishLinks: [],
 }
 
 const imported: EditorDraftFields = {
@@ -28,5 +31,50 @@ describe('applyExternalEntry', () => {
   it('keeps the same draft object when the row matches', () => {
     const incoming = { ...current, tags: [...current.tags] }
     expect(applyExternalEntry(current, incoming, false)).toBe(current)
+  })
+})
+
+describe('sameEditorDraft publish fields', () => {
+  const base = current
+
+  it('differs when published flag changes', () => {
+    expect(
+      sameEditorDraft(
+        { ...base, published: false, publishLinks: [] },
+        { ...base, published: true, publishLinks: [] },
+      ),
+    ).toBe(false)
+  })
+
+  it('differs when publish link href changes', () => {
+    expect(
+      sameEditorDraft(
+        {
+          ...base,
+          published: true,
+          publishLinks: [{ id: 'a', label: 'YT', href: 'https://youtu.be/x' }],
+        },
+        {
+          ...base,
+          published: true,
+          publishLinks: [{ id: 'a', label: 'YT', href: 'https://youtu.be/y' }],
+        },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('normalizePublishLinks', () => {
+  it('trims fields and drops empty href rows', () => {
+    expect(
+      normalizePublishLinks([
+        { id: '1', label: ' YT ', href: ' https://youtu.be/x ' },
+        { id: '2', label: 'x', href: '  ' },
+        { id: '3', label: '', href: 'https://open.spotify.com/track/1' },
+      ]),
+    ).toEqual([
+      { id: '1', label: 'YT', href: 'https://youtu.be/x' },
+      { id: '3', label: '', href: 'https://open.spotify.com/track/1' },
+    ])
   })
 })

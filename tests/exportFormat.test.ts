@@ -20,6 +20,8 @@ function entry(overrides: Partial<Entry> = {}): Entry {
     notes: 'memo',
     tags: ['Night'],
     rating: 5,
+    published: false,
+    publishLinks: [],
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: null,
@@ -50,6 +52,8 @@ describe('export format', () => {
       notes: 'memo',
       tags: ['Night'],
       rating: 5,
+      published: false,
+      publishLinks: [],
       createdAt: '2026-10-04T11:00:00.000Z',
       updatedAt: '2026-10-04T11:30:00.000Z',
       audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
@@ -192,6 +196,28 @@ describe('export format', () => {
       entries: [entryToExportRow(source)],
     })
     expect(parsed.entries).toEqual([source])
+  })
+
+  it('roundtrips published links and defaults missing fields', () => {
+    const source = entry({
+      published: true,
+      publishLinks: [{ id: 'yt', label: 'YouTube', href: 'https://youtu.be/1' }],
+    })
+    const parsed = parseExportBundle(JSON.parse(buildExportBundle([source])))
+    expect(parsed.entries[0]?.published).toBe(true)
+    expect(parsed.entries[0]?.publishLinks).toEqual(source.publishLinks)
+
+    const raw = JSON.parse(buildExportBundle([entry()])) as {
+      format: string
+      formatVersion: number
+      exportedAt: string
+      entries: Array<Record<string, unknown>>
+    }
+    delete raw.entries[0]?.published
+    delete raw.entries[0]?.publishLinks
+    const legacyParsed = parseExportBundle(raw)
+    expect(legacyParsed.entries[0]?.published).toBe(false)
+    expect(legacyParsed.entries[0]?.publishLinks).toEqual([])
   })
 
   it('rejects a bundle that is not suno-prompt-desk v1', () => {

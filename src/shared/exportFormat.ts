@@ -1,5 +1,5 @@
-import type { AudioRef, DeskExportBundle, Entry, StarRating } from './types'
-import { normalizeRating } from './types'
+import type { AudioRef, DeskExportBundle, Entry, PublishLink, StarRating } from './types'
+import { normalizePublishLinks, normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
 export interface ExportAudioLocal {
@@ -20,6 +20,8 @@ export interface ExportEntryRow {
   notes: string
   tags: string[]
   rating: StarRating
+  published: boolean
+  publishLinks: PublishLink[]
   createdAt: string
   updatedAt: string
   audio: ExportAudio
@@ -54,6 +56,8 @@ export function entryToExportRow(entry: Entry): ExportEntryRow {
     notes: entry.notes,
     tags: [...entry.tags],
     rating: entry.rating,
+    published: entry.published,
+    publishLinks: normalizePublishLinks(entry.publishLinks),
     createdAt: new Date(entry.createdAt).toISOString(),
     updatedAt: new Date(entry.updatedAt).toISOString(),
     audio: exportAudio(entry.audio),
@@ -112,6 +116,19 @@ function requireTags(value: unknown): string[] {
   return [...value]
 }
 
+function parsePublishLinks(value: unknown): PublishLink[] {
+  if (!Array.isArray(value)) invalid('publishLinks')
+  const links: PublishLink[] = []
+  for (const item of value) {
+    if (!isRecord(item)) invalid('publishLinks')
+    const id = requireNonEmpty(item.id, 'publishLinks.id')
+    const href = requireText(item.href, 'publishLinks.href')
+    const label = item.label === undefined ? '' : requireText(item.label, 'publishLinks.label')
+    links.push({ id, label, href })
+  }
+  return normalizePublishLinks(links)
+}
+
 function parseAudio(value: unknown): AudioRef | null {
   if (value === null || value === undefined) return null
   if (!isRecord(value)) invalid('audio')
@@ -135,6 +152,8 @@ function parseEntry(raw: unknown): Entry {
     notes: requireText(raw.notes, 'notes'),
     tags: requireTags(raw.tags),
     rating: parseRating(raw),
+    published: raw.published === undefined ? false : requireBoolean(raw.published, 'published'),
+    publishLinks: raw.publishLinks === undefined ? [] : parsePublishLinks(raw.publishLinks),
     createdAt: requireIso(raw.createdAt, 'createdAt'),
     updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
     audio: parseAudio(raw.audio),

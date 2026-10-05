@@ -12,6 +12,8 @@ function entry(
     notes: '',
     tags: [],
     rating: 0,
+    published: false,
+    publishLinks: [],
     createdAt: 0,
     updatedAt: 0,
     audio: null,

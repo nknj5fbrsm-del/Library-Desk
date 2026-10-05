@@ -6,7 +6,8 @@ import {
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
 import { applyExternalEntry, sameEditorDraft } from '@shared/editorDraft'
-import type { Entry, StarRating } from '@shared/types'
+import type { Entry, PublishLink, StarRating } from '@shared/types'
+import { normalizePublishLinks } from '@shared/types'
 import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { CoverPanel } from '@renderer/components/CoverThumb'
@@ -27,6 +28,8 @@ interface Draft {
   notes: string
   tags: string[]
   rating: StarRating
+  published: boolean
+  publishLinks: PublishLink[]
 }
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
@@ -228,6 +231,8 @@ function toDraft(entry: Entry): Draft {
     notes: entry.notes,
     tags: [...entry.tags],
     rating: entry.rating,
+    published: entry.published,
+    publishLinks: entry.publishLinks.map((link) => ({ ...link })),
   }
 }
 
@@ -300,6 +305,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     return {
       ...value,
       tags: [...value.tags],
+      publishLinks: value.publishLinks.map((link) => ({ ...link })),
     }
   }
 
@@ -380,6 +386,8 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       notes: sent.notes,
       tags: [...sent.tags],
       rating: sent.rating,
+      published: sent.published,
+      publishLinks: normalizePublishLinks(sent.publishLinks),
     }
     if (mountedRef.current) setSaveState('saving')
     savingRef.current = true
@@ -658,6 +666,99 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           />
         </div>
       </div>
+      <label className="field field-inline">
+        <input
+          type="checkbox"
+          checked={draft.published}
+          onChange={(event) => patchDraft({ published: event.target.checked }, true)}
+        />
+        <span className="field-label">Veröffentlicht</span>
+      </label>
+      {draft.published ? (
+        <div className="publish-links" aria-label="Publish-Links">
+          {draft.publishLinks.map((link) => (
+            <div key={link.id} className="publish-link-row">
+              <input
+                aria-label="Link-Label"
+                placeholder="YouTube, Spotify…"
+                autoComplete="off"
+                value={link.label}
+                onChange={(event) => {
+                  const label = event.target.value
+                  patchDraft(
+                    {
+                      publishLinks: draftRef.current.publishLinks.map((item) =>
+                        item.id === link.id ? { ...item, label } : item,
+                      ),
+                    },
+                    true,
+                  )
+                }}
+              />
+              <input
+                aria-label="Link-URL"
+                placeholder="https://"
+                autoComplete="off"
+                spellCheck={false}
+                value={link.href}
+                onChange={(event) => {
+                  const href = event.target.value
+                  patchDraft(
+                    {
+                      publishLinks: draftRef.current.publishLinks.map((item) =>
+                        item.id === link.id ? { ...item, href } : item,
+                      ),
+                    },
+                    true,
+                  )
+                }}
+              />
+              <button
+                type="button"
+                className="btn"
+                disabled={!link.href.trim()}
+                onClick={() => void getDesk().shell.openExternal(link.href.trim())}
+              >
+                Öffnen
+              </button>
+              <button
+                type="button"
+                className="btn"
+                aria-label="Link entfernen"
+                onClick={() =>
+                  patchDraft(
+                    {
+                      publishLinks: draftRef.current.publishLinks.filter(
+                        (item) => item.id !== link.id,
+                      ),
+                    },
+                    true,
+                  )
+                }
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn"
+            onClick={() =>
+              patchDraft(
+                {
+                  publishLinks: [
+                    ...draftRef.current.publishLinks,
+                    { id: crypto.randomUUID(), label: '', href: '' },
+                  ],
+                },
+                true,
+              )
+            }
+          >
+            + Link
+          </button>
+        </div>
+      ) : null}
       <label className="field">
         <span className="field-label">Style</span>
         <textarea

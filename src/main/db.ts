@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS entries (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   audio_json TEXT,
-  cover_json TEXT
+  cover_json TEXT,
+  published INTEGER NOT NULL DEFAULT 0,
+  publish_links_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -47,5 +49,11 @@ export function migrate(db: AppDatabase): void {
   if (!columns.includes('rating')) {
     db.exec('ALTER TABLE entries ADD COLUMN rating INTEGER NOT NULL DEFAULT 0')
     db.exec('UPDATE entries SET rating = 5 WHERE is_power = 1 AND rating = 0')
+  }
+  if (!columns.includes('published')) {
+    db.exec('ALTER TABLE entries ADD COLUMN published INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!columns.includes('publish_links_json')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN publish_links_json TEXT NOT NULL DEFAULT '[]'`)
   }
 }

@@ -10,6 +10,12 @@ export interface CoverRef {
 /** 0 = keine Bewertung, 1–5 Sterne */
 export type StarRating = 0 | 1 | 2 | 3 | 4 | 5
 
+export interface PublishLink {
+  id: string
+  label: string
+  href: string
+}
+
 export interface Entry {
   id: string
   groupId: string
@@ -20,13 +26,15 @@ export interface Entry {
   notes: string
   tags: string[]
   rating: StarRating
+  published: boolean
+  publishLinks: PublishLink[]
   createdAt: number
   updatedAt: number
   audio: AudioRef | null
   cover: CoverRef | null
 }
 
-export type LibraryFacet = 'all' | 'rated' | { tag: string }
+export type LibraryFacet = 'all' | 'rated' | 'published' | { tag: string }
 export type SortMode = 'newest' | 'title' | 'updated'
 
 export interface VersionGroup {
@@ -54,4 +62,17 @@ export function normalizeRating(value: unknown): StarRating {
   if (n <= 0) return 0
   if (n >= 5) return 5
   return n as StarRating
+}
+
+export function normalizePublishLinks(links: PublishLink[] | undefined): PublishLink[] {
+  if (!links) return []
+  const out: PublishLink[] = []
+  for (const link of links) {
+    if (!link || typeof link.id !== 'string' || link.id.length === 0) continue
+    const href = typeof link.href === 'string' ? link.href.trim() : ''
+    if (!href) continue
+    const label = typeof link.label === 'string' ? link.label.trim() : ''
+    out.push({ id: link.id, label, href })
+  }
+  return out
 }

@@ -22,6 +22,8 @@ function bundleEntry(overrides: Partial<Entry> = {}): Entry {
     notes: 'note',
     tags: ['Night', 'Drive'],
     rating: 5,
+    published: false,
+    publishLinks: [],
     createdAt: CREATED,
     updatedAt: UPDATED,
     audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },

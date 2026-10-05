@@ -699,3 +699,31 @@ select,
   white-space: nowrap;
   border: 0;
 }
+
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-inline .field-label {
+  margin: 0;
+}
+
+.publish-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.publish-link-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(10rem, 2fr) auto auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.publish-link-row input {
+  min-width: 0;
+}
