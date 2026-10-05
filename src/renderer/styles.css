@@ -374,15 +374,6 @@ select,
   color: #c9a227;
 }
 
-.star-clear {
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
-  font-size: 11px;
-  margin-left: 4px;
-  cursor: pointer;
-}
-
 .star-display {
   flex: none;
   font-size: 11px;

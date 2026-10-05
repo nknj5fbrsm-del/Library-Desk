@@ -29,16 +29,6 @@ export function StarRatingInput({
           </button>
         )
       })}
-      {value > 0 ? (
-        <button
-          type="button"
-          className="star-clear"
-          disabled={disabled}
-          onClick={() => onChange(0)}
-        >
-          Löschen
-        </button>
-      ) : null}
     </div>
   )
 }
