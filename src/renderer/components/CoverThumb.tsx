@@ -102,12 +102,23 @@ export function CoverPanel({ entry, busy, onChange }: CoverPanelProps): JSX.Elem
           aria-label="Cover-Vorschau"
           onMouseDown={() => setPreviewOpen(false)}
         >
+          <button
+            type="button"
+            className="cover-lightbox-close"
+            aria-label="Vorschau schließen"
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => setPreviewOpen(false)}
+          >
+            ×
+          </button>
           <img
             src={src}
             alt=""
             className="cover-lightbox-img"
             draggable={false}
+            title="Klicken zum Schließen"
             onMouseDown={(event) => event.stopPropagation()}
+            onClick={() => setPreviewOpen(false)}
           />
         </div>
       ) : null}

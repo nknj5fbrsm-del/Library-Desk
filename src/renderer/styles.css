@@ -262,13 +262,34 @@ select,
   cursor: zoom-out;
 }
 
+.cover-lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 61;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1c1917;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.cover-lightbox-close:hover {
+  background: #fff;
+}
+
 .cover-lightbox-img {
   max-width: min(90vw, 720px);
   max-height: 90vh;
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-  cursor: default;
+  cursor: zoom-out;
 }
 
 .star-rating {
