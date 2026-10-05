@@ -550,65 +550,65 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
             value={draft.rating}
             onChange={(rating) => patchDraft({ rating }, true)}
           />
-          <div className="field field-compact">
-            <span className="field-label" id="tags-label">
-              Tags
-            </span>
-            <div className="tag-editor" role="group" aria-labelledby="tags-label">
-              {draft.tags.map((tag) => (
-                <span key={tag.toLocaleLowerCase('de')} className="tag-chip">
-                  <span className="tag-chip-label">{tag}</span>
-                  <button
-                    type="button"
-                    className="tag-remove"
-                    aria-label={`${tag} entfernen`}
-                    onMouseDown={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                    }}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      patchDraft(
-                        {
-                          tags: draftRef.current.tags.filter((item) => item !== tag),
-                        },
-                        true,
-                      )
-                    }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <input
-                aria-label="Tag hinzufügen"
-                placeholder="Tag, Enter"
-                autoComplete="off"
-                value={tagInput}
-                onChange={(event) => {
-                  const value = event.target.value
-                  if (value.includes(',')) {
-                    const parts = value.split(',')
-                    const remainder = parts.pop() ?? ''
-                    commitTagField(parts.join(','), remainder)
-                    return
-                  }
-                  tagInputRef.current = value
-                  setTagInput(value)
-                }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter' && event.key !== ',') return
+        </div>
+      </div>
+      <div className="field">
+        <span className="field-label" id="tags-label">
+          Tags
+        </span>
+        <div className="tag-editor" role="group" aria-labelledby="tags-label">
+          {draft.tags.map((tag) => (
+            <span key={tag.toLocaleLowerCase('de')} className="tag-chip">
+              <span className="tag-chip-label">{tag}</span>
+              <button
+                type="button"
+                className="tag-remove"
+                aria-label={`${tag} entfernen`}
+                onMouseDown={(event) => {
                   event.preventDefault()
-                  commitTagField(tagInputRef.current)
+                  event.stopPropagation()
                 }}
-                onBlur={() => {
-                  if (!tagInputRef.current.trim()) return
-                  commitTagField(tagInputRef.current)
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  patchDraft(
+                    {
+                      tags: draftRef.current.tags.filter((item) => item !== tag),
+                    },
+                    true,
+                  )
                 }}
-              />
-            </div>
-          </div>
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            aria-label="Tag hinzufügen"
+            placeholder="Tag, Enter"
+            autoComplete="off"
+            value={tagInput}
+            onChange={(event) => {
+              const value = event.target.value
+              if (value.includes(',')) {
+                const parts = value.split(',')
+                const remainder = parts.pop() ?? ''
+                commitTagField(parts.join(','), remainder)
+                return
+              }
+              tagInputRef.current = value
+              setTagInput(value)
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ',') return
+              event.preventDefault()
+              commitTagField(tagInputRef.current)
+            }}
+            onBlur={() => {
+              if (!tagInputRef.current.trim()) return
+              commitTagField(tagInputRef.current)
+            }}
+          />
         </div>
       </div>
       <label className="field">
