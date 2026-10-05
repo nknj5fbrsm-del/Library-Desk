@@ -23,7 +23,7 @@ function luminance(r: number, g: number, b: number): number {
 /** Boost chroma slightly so the window glow reads clearly. */
 export function enrichAmbienceColor(rgb: Rgb): Rgb {
   const avg = (rgb.r + rgb.g + rgb.b) / 3
-  const boost = 1.35
+  const boost = 1.5
   return {
     r: clampByte(avg + (rgb.r - avg) * boost),
     g: clampByte(avg + (rgb.g - avg) * boost),
@@ -73,7 +73,7 @@ export function pickDominantRgb(data: Uint8ClampedArray, step = 24): Rgb | null 
   })
 }
 
-export function rgbToAmbience(rgb: Rgb, alpha = 0.4): string {
+export function rgbToAmbience(rgb: Rgb, alpha = 0.55): string {
   return `rgba(${clampByte(rgb.r)}, ${clampByte(rgb.g)}, ${clampByte(rgb.b)}, ${alpha})`
 }
 

@@ -39,5 +39,6 @@ describe('coverColor', () => {
 
   it('formats ambience rgba', () => {
     expect(rgbToAmbience({ r: 10.2, g: 20.8, b: 30 }, 0.35)).toBe('rgba(10, 21, 30, 0.35)')
+    expect(rgbToAmbience({ r: 10, g: 20, b: 30 })).toBe('rgba(10, 20, 30, 0.55)')
   })
 })
