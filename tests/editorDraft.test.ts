@@ -62,6 +62,23 @@ describe('sameEditorDraft publish fields', () => {
       ),
     ).toBe(false)
   })
+
+  it('ignores empty-href draft rows when comparing publish links', () => {
+    expect(
+      sameEditorDraft(
+        {
+          ...base,
+          published: true,
+          publishLinks: [{ id: 'draft', label: '', href: '' }],
+        },
+        {
+          ...base,
+          published: true,
+          publishLinks: [],
+        },
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('normalizePublishLinks', () => {
