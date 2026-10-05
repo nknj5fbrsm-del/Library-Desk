@@ -535,7 +535,44 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   return (
     <div className="editor">
       <div className="editor-head">
-        <CoverPanel entry={entry} busy={busy} onChange={onCoverChange} />
+        <div className="editor-head-cover">
+          <CoverPanel entry={entry} busy={busy} onChange={onCoverChange} />
+          <div className="version-bar" aria-label="Versionen">
+            <div className="version-chips">
+              {siblings.map((sibling) => (
+                <button
+                  key={sibling.id}
+                  type="button"
+                  className={sibling.id === entry.id ? 'version-chip is-active' : 'version-chip'}
+                  aria-pressed={sibling.id === entry.id}
+                  onClick={() => {
+                    if (sibling.id === entry.id) return
+                    void (async () => {
+                      try {
+                        await flushRef.current()
+                      } catch {
+                        return
+                      }
+                      onSelectVersion(sibling.id)
+                    })()
+                  }}
+                >
+                  V{sibling.version}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary version-add"
+              disabled={busy}
+              aria-label="Version hinzufügen"
+              title="Version hinzufügen"
+              onClick={() => void runStructural(onCreateVersionRef.current)}
+            >
+              +
+            </button>
+          </div>
+        </div>
         <div className="editor-head-main">
           <input
             className="title-input"
@@ -776,40 +813,6 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           ) : null}
         </div>
       </section>
-      <div className="version-bar" aria-label="Versionen">
-        <span className="version-bar-label">Versionen</span>
-        <div className="version-chips">
-          {siblings.map((sibling) => (
-            <button
-              key={sibling.id}
-              type="button"
-              className={sibling.id === entry.id ? 'version-chip is-active' : 'version-chip'}
-              aria-pressed={sibling.id === entry.id}
-              onClick={() => {
-                if (sibling.id === entry.id) return
-                void (async () => {
-                  try {
-                    await flushRef.current()
-                  } catch {
-                    return
-                  }
-                  onSelectVersion(sibling.id)
-                })()
-              }}
-            >
-              V{sibling.version}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy}
-          onClick={() => void runStructural(onCreateVersionRef.current)}
-        >
-          + Version
-        </button>
-      </div>
       <p className="meta">
         Erstellt {timeFormat.format(entry.createdAt)}
         {' · '}

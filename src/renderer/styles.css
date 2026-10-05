@@ -419,24 +419,22 @@ select,
 .version-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 4px;
   flex-wrap: wrap;
-}
-
-.version-bar-label {
-  font-size: 12px;
-  color: var(--text-muted);
+  width: 100%;
 }
 
 .version-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  flex: 1;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: none;
 }
 
 .version-chip {
-  min-width: 36px;
+  min-width: 30px;
   height: 30px;
   padding: 0 8px;
   border: 1px solid var(--line);
@@ -453,10 +451,26 @@ select,
   border-color: #b7c7be;
 }
 
+.version-add {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  flex: none;
+}
+
 .editor-head {
   display: flex;
   align-items: flex-start;
   gap: 14px;
+}
+
+.editor-head-cover {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: calc(148px + 6px + 30px);
 }
 
 .editor-head-main {
