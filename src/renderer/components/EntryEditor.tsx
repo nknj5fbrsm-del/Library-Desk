@@ -5,7 +5,7 @@ import {
   formatCopyStyle,
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
-import { applyExternalEntry } from '@shared/editorDraft'
+import { applyExternalEntry, sameEditorDraft } from '@shared/editorDraft'
 import type { Entry, StarRating } from '@shared/types'
 import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
@@ -38,6 +38,8 @@ export interface EditorHandle {
   copyLyrics: () => Promise<void>
   copyBoth: () => Promise<void>
   requestDelete: () => void
+  undo: () => boolean
+  redo: () => boolean
 }
 
 interface EntryEditorProps {
@@ -277,12 +279,16 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const queueRef = useRef<Promise<void>>(Promise.resolve())
+  const undoStackRef = useRef<Draft[]>([])
+  const redoStackRef = useRef<Draft[]>([])
   const onUpdateRef = useRef(onUpdate)
   const onDuplicateRef = useRef(onDuplicate)
   const onCreateVersionRef = useRef(onCreateVersion)
   const onDeleteRef = useRef(onDelete)
   const flushRef = useRef<() => Promise<void>>(async () => undefined)
   const copyRef = useRef<(part: CopyPart) => Promise<void>>(async () => undefined)
+  const undoRef = useRef<() => boolean>(() => false)
+  const redoRef = useRef<() => boolean>(() => false)
 
   entryIdRef.current = entry.id
   onUpdateRef.current = onUpdate
@@ -290,7 +296,23 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   onCreateVersionRef.current = onCreateVersion
   onDeleteRef.current = onDelete
 
-  function applyDraft(next: Draft, markDirty: boolean): void {
+  function cloneDraft(value: Draft): Draft {
+    return {
+      ...value,
+      tags: [...value.tags],
+    }
+  }
+
+  function pushUndoSnapshot(previous: Draft): void {
+    undoStackRef.current.push(cloneDraft(previous))
+    if (undoStackRef.current.length > 40) undoStackRef.current.shift()
+    redoStackRef.current = []
+  }
+
+  function applyDraft(next: Draft, markDirty: boolean, recordHistory = false): void {
+    if (recordHistory && !sameEditorDraft(draftRef.current, next)) {
+      pushUndoSnapshot(draftRef.current)
+    }
     draftRef.current = next
     setDraft(next)
     if (!markDirty) return
@@ -303,8 +325,36 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     }, SAVE_DELAY_MS)
   }
 
-  function patchDraft(partial: Partial<Draft>): void {
-    applyDraft({ ...draftRef.current, ...partial }, true)
+  function patchDraft(partial: Partial<Draft>, recordHistory = false): void {
+    applyDraft({ ...draftRef.current, ...partial }, true, recordHistory)
+  }
+
+  function restoreDraft(next: Draft): void {
+    draftRef.current = next
+    setDraft(next)
+    dirtyRef.current = true
+    setSaveState('pending')
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null
+      void flushRef.current()
+    }, SAVE_DELAY_MS)
+  }
+
+  function undoDraft(): boolean {
+    const previous = undoStackRef.current.pop()
+    if (!previous) return false
+    redoStackRef.current.push(cloneDraft(draftRef.current))
+    restoreDraft(previous)
+    return true
+  }
+
+  function redoDraft(): boolean {
+    const next = redoStackRef.current.pop()
+    if (!next) return false
+    undoStackRef.current.push(cloneDraft(draftRef.current))
+    restoreDraft(next)
+    return true
   }
 
   function absorbTagInput(): void {
@@ -314,9 +364,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     tagInputRef.current = ''
     setTagInput('')
     if (next === draftRef.current) return
-    draftRef.current = next
-    setDraft(next)
-    dirtyRef.current = true
+    applyDraft(next, true, true)
   }
 
   async function writeIfDirty(): Promise<void> {
@@ -391,6 +439,8 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   }
 
   copyRef.current = copyPart
+  undoRef.current = undoDraft
+  redoRef.current = redoDraft
 
   useImperativeHandle(
     ref,
@@ -400,6 +450,8 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       copyLyrics: () => copyRef.current('lyrics'),
       copyBoth: () => copyRef.current('both'),
       requestDelete: () => setConfirmOpen(true),
+      undo: () => undoRef.current(),
+      redo: () => redoRef.current(),
     }),
     [],
   )
@@ -441,7 +493,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     const next = mergeTags(draftRef.current, raw)
     tagInputRef.current = remainder
     setTagInput(remainder)
-    if (next !== draftRef.current) applyDraft(next, true)
+    if (next !== draftRef.current) applyDraft(next, true, true)
   }
 
   const saveLabel =
@@ -469,7 +521,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           />
           <StarRatingInput
             value={draft.rating}
-            onChange={(rating) => patchDraft({ rating })}
+            onChange={(rating) => patchDraft({ rating }, true)}
           />
         </div>
       </div>
@@ -547,19 +599,32 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         ) : null}
       </div>
       <AudioPanel entry={entry} onAudioChange={onAudioChange} />
-      <label className="field">
-        <span className="field-label">Tags</span>
-        <div className="tag-editor">
+      <div className="field">
+        <span className="field-label" id="tags-label">
+          Tags
+        </span>
+        <div className="tag-editor" role="group" aria-labelledby="tags-label">
           {draft.tags.map((tag) => (
             <span key={tag.toLocaleLowerCase('de')} className="tag-chip">
-              {tag}
+              <span className="tag-chip-label">{tag}</span>
               <button
                 type="button"
                 className="tag-remove"
                 aria-label={`${tag} entfernen`}
-                onClick={() =>
-                  patchDraft({ tags: draftRef.current.tags.filter((item) => item !== tag) })
-                }
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onClick={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  patchDraft(
+                    {
+                      tags: draftRef.current.tags.filter((item) => item !== tag),
+                    },
+                    true,
+                  )
+                }}
               >
                 ×
               </button>
@@ -592,7 +657,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
             }}
           />
         </div>
-      </label>
+      </div>
       <label className="field">
         <span className="field-label">Style</span>
         <textarea

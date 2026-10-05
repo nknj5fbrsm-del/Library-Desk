@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { getDesk } from '@renderer/api'
 import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor'
 import { LibraryList } from '@renderer/components/LibraryList'
 import { Toolbar } from '@renderer/components/Toolbar'
@@ -26,6 +27,22 @@ export default function App(): JSX.Element {
 
   useEffect(() => {
     void hydrateVolume()
+  }, [])
+
+  useEffect(() => {
+    const desk = getDesk()
+    const offUndo = desk.edit.onUndo(() => {
+      if (editorRef.current?.undo()) return
+      document.execCommand('undo')
+    })
+    const offRedo = desk.edit.onRedo(() => {
+      if (editorRef.current?.redo()) return
+      document.execCommand('redo')
+    })
+    return () => {
+      offUndo()
+      offRedo()
+    }
   }, [])
 
   useEffect(() => {

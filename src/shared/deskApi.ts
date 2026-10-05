@@ -53,4 +53,8 @@ export interface DeskApi {
   shell: {
     openExternal(url: string): Promise<void>
   }
+  edit: {
+    onUndo(handler: () => void): () => void
+    onRedo(handler: () => void): () => void
+  }
 }

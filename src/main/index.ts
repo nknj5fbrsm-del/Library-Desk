@@ -1,5 +1,6 @@
 import { app, BrowserWindow, protocol } from 'electron'
 import { join } from 'path'
+import { installAppMenu } from './appMenu'
 import { registerDeskAudioProtocol } from './audioProtocol'
 import { openDatabase, type AppDatabase } from './db'
 import { registerIpc } from './ipc'
@@ -46,6 +47,7 @@ let db: AppDatabase | null = null
 
 app.whenReady().then(() => {
   const userData = app.getPath('userData')
+  installAppMenu()
   registerDeskAudioProtocol(userData)
   db = openDatabase(join(userData, 'library.db'))
   registerIpc(db, userData)

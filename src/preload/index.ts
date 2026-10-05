@@ -37,6 +37,22 @@ const desk: DeskApi = {
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   },
+  edit: {
+    onUndo: (handler: () => void) => {
+      const listener = (): void => handler()
+      ipcRenderer.on('edit:undo', listener)
+      return () => {
+        ipcRenderer.removeListener('edit:undo', listener)
+      }
+    },
+    onRedo: (handler: () => void) => {
+      const listener = (): void => handler()
+      ipcRenderer.on('edit:redo', listener)
+      return () => {
+        ipcRenderer.removeListener('edit:redo', listener)
+      }
+    },
+  },
 }
 
 contextBridge.exposeInMainWorld('desk', desk)
