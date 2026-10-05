@@ -18,6 +18,11 @@ npm run dev
 
 Weitere Skripte: `npm run build`, `npm run preview`.
 
+## Build / Installer
+
+- **Mac (lokal auf diesem Mac):** `npm run dist:mac` → `release/*.dmg`
+- **Windows:** Auf einer **Windows-Maschine oder in CI** bauen: `npm run dist:win` → `release/*.exe` (NSIS, Zielarchitektur **x64**). `better-sqlite3` ist nativ — ein von macOS erzeugter Windows-Installer ist **nicht lauffähig** und wird nicht als Deliverable unterstützt.
+
 ## Tests
 
 ```bash

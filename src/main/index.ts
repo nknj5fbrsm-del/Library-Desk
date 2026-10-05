@@ -1,3 +1,4 @@
+import { existsSync } from 'fs'
 import { app, BrowserWindow, protocol } from 'electron'
 import { join } from 'path'
 import { installAppMenu } from './appMenu'
@@ -19,18 +20,33 @@ protocol.registerSchemesAsPrivileged([
   },
 ])
 
+function resolveAppIcon(): string | undefined {
+  const candidates = [
+    join(__dirname, '../../build/icon.png'),
+    join(process.resourcesPath, 'build/icon.png'),
+    join(process.resourcesPath, 'icon.png'),
+  ]
+  return candidates.find((p) => existsSync(p))
+}
+
 function createWindow(): void {
+  const icon = resolveAppIcon()
   const mainWindow = new BrowserWindow({
     width: 1100,
     height: 760,
     show: false,
     title: 'Library Desk',
+    ...(icon ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   })
+
+  if (process.platform === 'darwin' && icon) {
+    app.dock?.setIcon(icon)
+  }
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
