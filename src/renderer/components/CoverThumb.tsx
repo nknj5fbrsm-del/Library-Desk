@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { getDesk } from '@renderer/api'
 import type { Entry } from '@shared/types'
 
@@ -6,10 +6,9 @@ interface CoverPanelProps {
   entry: Entry
   busy: boolean
   onChange: (entry: Entry) => void
-  overlay?: ReactNode
 }
 
-export function CoverPanel({ entry, busy, onChange, overlay }: CoverPanelProps): JSX.Element {
+export function CoverPanel({ entry, busy, onChange }: CoverPanelProps): JSX.Element {
   const [src, setSrc] = useState<string | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
   const [note, setNote] = useState<string | null>(null)
@@ -53,21 +52,18 @@ export function CoverPanel({ entry, busy, onChange, overlay }: CoverPanelProps):
   return (
     <section className="cover-panel" aria-label="Cover">
       <div className="cover-main">
-        <div className="cover-media">
-          {src ? (
-            <button
-              type="button"
-              className="cover-preview-btn"
-              onClick={() => setPreviewOpen(true)}
-              title="Große Vorschau"
-            >
-              <img className="cover-thumb cover-thumb-detail" src={src} alt="" draggable={false} />
-            </button>
-          ) : (
-            <div className="cover-placeholder">Kein Cover</div>
-          )}
-          {overlay ? <div className="cover-overlay">{overlay}</div> : null}
-        </div>
+        {src ? (
+          <button
+            type="button"
+            className="cover-preview-btn"
+            onClick={() => setPreviewOpen(true)}
+            title="Große Vorschau"
+          >
+            <img className="cover-thumb cover-thumb-detail" src={src} alt="" draggable={false} />
+          </button>
+        ) : (
+          <div className="cover-placeholder">Kein Cover</div>
+        )}
         <div className="cover-actions">
           <button
             type="button"
