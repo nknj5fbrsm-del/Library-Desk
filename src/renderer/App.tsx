@@ -6,6 +6,7 @@ import { LibraryList } from '@renderer/components/LibraryList'
 import { Toolbar } from '@renderer/components/Toolbar'
 import { useCoverAmbienceLayers } from '@renderer/hooks/useCoverAmbience'
 import { useLibrary } from '@renderer/hooks/useLibrary'
+import { useIsMobile } from '@renderer/hooks/useMobileLayout'
 import { hydrateVolume } from '@renderer/hooks/useMiniPlayer'
 import type { Entry } from '@shared/types'
 
@@ -13,6 +14,12 @@ const SPLIT_SETTING_KEY = 'splitListWidth'
 const SPLIT_DEFAULT = 360
 const SPLIT_MIN = 200
 const SPLIT_MAX_RATIO = 0.7
+
+type MobilePane = 'list' | 'detail'
+
+interface DeskHistoryState {
+  libraryDeskPane?: MobilePane
+}
 
 function isTextField(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -33,26 +40,53 @@ function parseStoredWidth(raw: string | null): number | null {
   return Math.round(value)
 }
 
+function readHistoryPane(): MobilePane | null {
+  const state = window.history.state as DeskHistoryState | null
+  return state?.libraryDeskPane === 'detail' || state?.libraryDeskPane === 'list'
+    ? state.libraryDeskPane
+    : null
+}
+
 export default function App(): JSX.Element {
   const library = useLibrary()
+  const isMobile = useIsMobile()
   const searchRef = useRef<HTMLInputElement>(null)
   const editorRef = useRef<EditorHandle>(null)
   const splitRef = useRef<HTMLDivElement>(null)
   const listWidthRef = useRef(SPLIT_DEFAULT)
   const selectedIdRef = useRef(library.selectedId)
   const createNewRef = useRef(library.createNew)
+  const isMobileRef = useRef(isMobile)
+  const wasMobileRef = useRef(isMobile)
   selectedIdRef.current = library.selectedId
   createNewRef.current = library.createNew
+  isMobileRef.current = isMobile
 
   const [listWidth, setListWidth] = useState(SPLIT_DEFAULT)
   const [dragging, setDragging] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null)
+  const [mobilePane, setMobilePane] = useState<MobilePane>('list')
   listWidthRef.current = listWidth
   const coverAmbience = useCoverAmbienceLayers(library.selectedEntry)
 
   const filtered =
     library.query.search.trim().length > 0 || library.query.facet !== 'all'
   const selectedVisible = library.entries.some((entry) => entry.id === library.selectedId)
+
+  function showDetailPane(pushHistory: boolean): void {
+    setMobilePane('detail')
+    if (!isMobileRef.current || !pushHistory) return
+    if (readHistoryPane() === 'detail') return
+    window.history.pushState({ libraryDeskPane: 'detail' } satisfies DeskHistoryState, '')
+  }
+
+  function showListPane(fromButton: boolean): void {
+    if (fromButton && readHistoryPane() === 'detail') {
+      window.history.back()
+      return
+    }
+    setMobilePane('list')
+  }
 
   useEffect(() => {
     void hydrateVolume()
@@ -82,6 +116,23 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile && !wasMobileRef.current) {
+      setMobilePane(selectedIdRef.current ? 'detail' : 'list')
+    }
+    wasMobileRef.current = isMobile
+  }, [isMobile])
+
+  useEffect(() => {
+    function onPopState(): void {
+      if (!isMobileRef.current) return
+      const pane = readHistoryPane()
+      setMobilePane(pane === 'detail' && selectedIdRef.current ? 'detail' : 'list')
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
   useEffect(() => {
@@ -130,6 +181,7 @@ export default function App(): JSX.Element {
             return
           }
           await createNewRef.current()
+          if (isMobileRef.current) showDetailPane(true)
         })()
         return
       }
@@ -138,6 +190,14 @@ export default function App(): JSX.Element {
         event.preventDefault()
         searchRef.current?.focus()
         searchRef.current?.select()
+        return
+      }
+
+      if (event.key === 'Escape' && isMobileRef.current && mobilePane === 'detail') {
+        if (isTextField(document.activeElement)) return
+        if (document.querySelector('[role="dialog"]')) return
+        event.preventDefault()
+        showListPane(true)
         return
       }
 
@@ -151,7 +211,7 @@ export default function App(): JSX.Element {
 
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [mobilePane])
 
   function persistListWidth(width: number): void {
     void getDesk()
@@ -160,7 +220,7 @@ export default function App(): JSX.Element {
   }
 
   function onSplitterPointerDown(event: ReactPointerEvent<HTMLDivElement>): void {
-    if (event.button !== 0) return
+    if (isMobile || event.button !== 0) return
     event.preventDefault()
     const handle = event.currentTarget
     const split = splitRef.current
@@ -190,9 +250,17 @@ export default function App(): JSX.Element {
   }
 
   const isWebDesk = import.meta.env.VITE_DESK_WEB === 'true'
+  const appClass = [
+    'app',
+    dragging ? 'is-splitting' : '',
+    isMobile ? 'is-mobile' : '',
+    isMobile ? (mobilePane === 'detail' ? 'is-detail-pane' : 'is-list-pane') : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
-    <div className={dragging ? 'app is-splitting' : 'app'}>
+    <div className={appClass}>
       <div
         className={
           coverAmbience.frontActive ? 'app-ambience is-active' : 'app-ambience'
@@ -231,6 +299,7 @@ export default function App(): JSX.Element {
               return
             }
             await library.createNew()
+            if (isMobileRef.current) showDetailPane(true)
           })()
         }}
         onImport={() => {
@@ -257,7 +326,11 @@ export default function App(): JSX.Element {
       <div
         className="split"
         ref={splitRef}
-        style={{ gridTemplateColumns: `${listWidth}px 6px minmax(0, 1fr)` }}
+        style={
+          isMobile
+            ? undefined
+            : { gridTemplateColumns: `${listWidth}px 6px minmax(0, 1fr)` }
+        }
       >
         <LibraryList
           entries={library.entries}
@@ -266,7 +339,10 @@ export default function App(): JSX.Element {
           error={library.error}
           filtered={filtered}
           busy={library.busy}
-          onSelect={library.select}
+          onSelect={(id) => {
+            library.select(id)
+            if (isMobileRef.current) showDetailPane(true)
+          }}
           onDelete={(entry) => setPendingDelete(entry)}
         />
         <div
@@ -276,9 +352,11 @@ export default function App(): JSX.Element {
           aria-label="Listenbreite"
           aria-valuenow={listWidth}
           aria-valuemin={SPLIT_MIN}
-          tabIndex={0}
+          aria-hidden={isMobile || undefined}
+          tabIndex={isMobile ? -1 : 0}
           onPointerDown={onSplitterPointerDown}
           onKeyDown={(event) => {
+            if (isMobile) return
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
             event.preventDefault()
             const delta = event.key === 'ArrowLeft' ? -16 : 16
@@ -290,6 +368,17 @@ export default function App(): JSX.Element {
           }}
         />
         <section className="detail" aria-label="Detail">
+          {isMobile && mobilePane === 'detail' ? (
+            <div className="mobile-detail-bar">
+              <button
+                type="button"
+                className="btn mobile-back"
+                onClick={() => showListPane(true)}
+              >
+                ← Bibliothek
+              </button>
+            </div>
+          ) : null}
           {library.selectedEntry ? (
             <>
               {!selectedVisible ? (
@@ -304,7 +393,10 @@ export default function App(): JSX.Element {
                 onUpdate={library.updateEntry}
                 onDuplicate={library.duplicateEntry}
                 onCreateVersion={library.createVersion}
-                onDelete={library.deleteEntry}
+                onDelete={async (id) => {
+                  await library.deleteEntry(id)
+                  if (isMobileRef.current) showListPane(false)
+                }}
                 onExportEntry={library.exportEntry}
                 onSelectVersion={library.select}
                 onAudioChange={library.syncEntry}
@@ -338,6 +430,7 @@ export default function App(): JSX.Element {
                 return
               }
               await library.deleteEntry(target.id)
+              if (isMobileRef.current) showListPane(false)
             })()
           }}
           onCancel={() => setPendingDelete(null)}
