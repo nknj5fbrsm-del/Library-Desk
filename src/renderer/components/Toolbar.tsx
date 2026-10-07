@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useState, type RefObject } from 'react'
 import type { LibraryFacet, SortMode } from '@shared/types'
 
 interface ToolbarProps {
@@ -32,6 +32,7 @@ export function Toolbar({
   onExport,
   searchRef,
 }: ToolbarProps): JSX.Element {
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const facetValue =
     facet === 'rated' ? 'rated' : facet === 'published' ? 'published' : 'all'
   const tagValue = typeof facet === 'object' ? facet.tag : ''
@@ -39,9 +40,11 @@ export function Toolbar({
     (tag) => tag.toLocaleLowerCase('de') === tagValue.toLocaleLowerCase('de'),
   )
   const knownTags = tagValue && !tagKnown ? [tagValue, ...tags] : tags
+  const hasActiveFilter =
+    facetValue !== 'all' || tagValue !== '' || sort !== 'newest'
 
   return (
-    <header className="toolbar">
+    <header className={filtersOpen ? 'toolbar is-filters-open' : 'toolbar'}>
       <div className="toolbar-row">
         <div className="toolbar-filters">
           <input
@@ -54,53 +57,67 @@ export function Toolbar({
             value={search}
             onChange={(event) => onSearch(event.target.value)}
           />
-          <select
-            aria-label="Filter"
-            value={facetValue}
-            onChange={(event) => {
-              const value = event.target.value
-              if (value === 'rated') onFacet('rated')
-              else if (value === 'published') onFacet('published')
-              else onFacet('all')
-            }}
-          >
-            <option value="all">Alle</option>
-            <option value="rated">Mit Sternen</option>
-            <option value="published">Veröffentlicht</option>
-          </select>
-          <select
-            aria-label="Tag"
-            value={tagValue}
-            onChange={(event) => {
-              const tag = event.target.value
-              onFacet(tag ? { tag } : 'all')
-            }}
-          >
-            <option value="">Alle Tags</option>
-            {knownTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Sortierung"
-            value={sort}
-            onChange={(event) => onSort(event.target.value as SortMode)}
-          >
-            <option value="newest">Neueste</option>
-            <option value="title">A–Z</option>
-            <option value="updated">Zuletzt geändert</option>
-          </select>
+          <div className="toolbar-filter-controls">
+            <select
+              aria-label="Filter"
+              value={facetValue}
+              onChange={(event) => {
+                const value = event.target.value
+                if (value === 'rated') onFacet('rated')
+                else if (value === 'published') onFacet('published')
+                else onFacet('all')
+              }}
+            >
+              <option value="all">Alle</option>
+              <option value="rated">Mit Sternen</option>
+              <option value="published">Veröffentlicht</option>
+            </select>
+            <select
+              aria-label="Tag"
+              value={tagValue}
+              onChange={(event) => {
+                const tag = event.target.value
+                onFacet(tag ? { tag } : 'all')
+              }}
+            >
+              <option value="">Alle Tags</option>
+              {knownTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Sortierung"
+              value={sort}
+              onChange={(event) => onSort(event.target.value as SortMode)}
+            >
+              <option value="newest">Neueste</option>
+              <option value="title">A–Z</option>
+              <option value="updated">Zuletzt geändert</option>
+            </select>
+          </div>
         </div>
         <div className="toolbar-actions">
           <button type="button" className="btn btn-primary" disabled={busy} onClick={onCreate}>
             Neu
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={onImport}>
+          <button
+            type="button"
+            className={
+              filtersOpen || hasActiveFilter
+                ? 'btn toolbar-filters-toggle is-active'
+                : 'btn toolbar-filters-toggle'
+            }
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            Mehr
+          </button>
+          <button type="button" className="btn toolbar-extra-action" disabled={busy} onClick={onImport}>
             Import
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={onExport}>
+          <button type="button" className="btn toolbar-extra-action" disabled={busy} onClick={onExport}>
             Bibliothek sichern
           </button>
         </div>
