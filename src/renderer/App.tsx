@@ -189,6 +189,8 @@ export default function App(): JSX.Element {
     handle.addEventListener('pointercancel', onUp)
   }
 
+  const isWebDesk = import.meta.env.VITE_DESK_WEB === 'true'
+
   return (
     <div className={dragging ? 'app is-splitting' : 'app'}>
       <div
@@ -205,6 +207,11 @@ export default function App(): JSX.Element {
         style={{ '--cover-ambience': coverAmbience.back } as CSSProperties}
         aria-hidden="true"
       />
+      {isWebDesk ? (
+        <div className="web-persist-banner" role="note">
+          Daten bleiben in diesem Browser — Export empfohlen.
+        </div>
+      ) : null}
       <Toolbar
         search={library.query.search}
         facet={library.query.facet}

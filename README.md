@@ -18,6 +18,14 @@ npm run dev
 
 Weitere Skripte: `npm run build`, `npm run preview`.
 
+## Web
+
+Browser-Version derselben UI (IndexedDB, ohne Login):
+
+- Dev: `npm run dev:web` → http://localhost:5174/index.web.html
+- Build: `npm run build:web` → `dist-web/` (static host / Vercel / Netlify)
+- Bibliothek liegt in IndexedDB dieses Browsers — kein Sync mit der Desktop-App; Austausch über Export/Import.
+
 ## Build / Installer
 
 - **Mac (lokal auf diesem Mac):** `npm run dist:mac` → `release/*.dmg`

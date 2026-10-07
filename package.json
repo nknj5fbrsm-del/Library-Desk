@@ -13,7 +13,9 @@
     "test:watch": "ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "dev:web": "vite --config vite.config.web.ts",
+    "build:web": "vite build --config vite.config.web.ts && mv dist-web/index.web.html dist-web/index.html"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",
@@ -28,6 +30,7 @@
     "electron": "^33.2.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
   },
@@ -46,16 +49,28 @@
       "**/*.node"
     ],
     "extraResources": [
-      { "from": "build/icon.png", "to": "icon.png" }
+      {
+        "from": "build/icon.png",
+        "to": "icon.png"
+      }
     ],
     "mac": {
       "icon": "build/icon.png",
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "category": "public.app-category.productivity"
     },
     "win": {
       "icon": "build/icon.png",
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,

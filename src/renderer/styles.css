@@ -77,6 +77,16 @@ textarea {
   z-index: 1;
 }
 
+.web-persist-banner {
+  flex: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted, #5a6570);
+  background: color-mix(in srgb, var(--bg-raised, #fff) 80%, transparent);
+  border-bottom: 1px solid var(--line, #e2e6ea);
+}
+
 .toolbar {
   flex: none;
   background: color-mix(in srgb, var(--bg-raised) 68%, transparent);
