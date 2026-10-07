@@ -26,6 +26,13 @@ Browser-Version derselben UI (IndexedDB, ohne Login):
 - Build: `npm run build:web` → `dist-web/` (static host / Vercel / Netlify)
 - Bibliothek liegt in IndexedDB dieses Browsers — kein Sync mit der Desktop-App; Austausch über Export/Import.
 
+### Vercel
+
+1. Repo auf GitHub: `https://github.com/nknj5fbrsm-del/Library-Desk.git`
+2. [Vercel](https://vercel.com) → **Add New… → Project** → GitHub-Repo **Library-Desk** importieren
+3. Einstellungen kommen aus `vercel.json` (Build: `npm run build:web`, Output: `dist-web`)
+4. Deploy — fertige URL teilen; jeder Nutzer hat seine eigene Bibliothek im Browser
+
 ## Build / Installer
 
 - **Mac (lokal auf diesem Mac):** `npm run dist:mac` → `release/*.dmg`
