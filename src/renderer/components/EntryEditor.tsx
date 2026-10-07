@@ -6,6 +6,7 @@ import {
 } from '@shared/copyFormat'
 import type { UpdateEntryPatch } from '@shared/deskApi'
 import { applyExternalEntry, sameEditorDraft } from '@shared/editorDraft'
+import { titleForEditor } from '@shared/title'
 import type { Entry, PublishLink, StarRating } from '@shared/types'
 import { normalizePublishLinks } from '@shared/types'
 import { getDesk } from '@renderer/api'
@@ -244,7 +245,7 @@ function AudioPanel({
 
 function toDraft(entry: Entry): Draft {
   return {
-    title: entry.title,
+    title: titleForEditor(entry.title),
     stylePrompt: entry.stylePrompt,
     lyrics: entry.lyrics,
     notes: entry.notes,
@@ -417,8 +418,11 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     try {
       const saved = await onUpdateRef.current(id, patch)
       if (!mountedRef.current || entryIdRef.current !== id) return
-      if (draftRef.current.title === sent.title && saved.title !== sent.title) {
-        const next = { ...draftRef.current, title: saved.title }
+      // Adopt trim/normalization into the field, but never replace an empty
+      // draft with the persisted "Ohne Titel" sentinel (placeholder handles that).
+      const editorTitle = titleForEditor(saved.title)
+      if (draftRef.current.title === sent.title && editorTitle !== sent.title) {
+        const next = { ...draftRef.current, title: editorTitle }
         draftRef.current = next
         setDraft(next)
       }
