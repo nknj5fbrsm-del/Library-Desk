@@ -933,15 +933,16 @@ select,
   }
 
   .toolbar-row {
-    align-items: stretch;
+    align-items: flex-start;
   }
 
   .toolbar-filters {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .search {
-    width: 100%;
+    width: auto;
     min-width: 0;
     flex: 1 1 auto;
     height: 44px;
@@ -962,6 +963,10 @@ select,
   .toolbar:not(.is-filters-open) .toolbar-filter-controls,
   .toolbar:not(.is-filters-open) .toolbar-extra-action {
     display: none;
+  }
+
+  .toolbar.is-filters-open .toolbar-filters {
+    flex: 1 1 100%;
   }
 
   .toolbar.is-filters-open .toolbar-filter-controls {
