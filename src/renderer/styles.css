@@ -937,14 +937,14 @@ select,
   }
 
   .toolbar-filters {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
   }
 
   .search {
-    width: auto;
+    width: 0;
     min-width: 0;
-    flex: 1 1 auto;
+    flex: 1 1 0;
     height: 44px;
   }
 
