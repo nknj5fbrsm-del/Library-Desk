@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, renameSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 
 const ENTRY_ID = /^[A-Za-z0-9._-]{1,128}$/
@@ -26,20 +26,20 @@ function entryDir(audioRoot: string, entryId: string): string {
   return join(audioRoot, assertEntryId(entryId))
 }
 
-export function copyLocalAudio(
+function writeAudioFile(
   userData: string,
   entryId: string,
-  sourcePath: string,
+  relativePath: string,
+  originalName: string,
+  write: (target: string) => void,
 ): { relativePath: string; originalName: string } {
-  const originalName = basename(sourcePath)
-  const relativePath = sanitizeFilename(originalName)
   const audioRoot = audioRootFor(userData)
   const dir = entryDir(audioRoot, entryId)
   const staging = join(userData, `.audio-staging-${assertEntryId(entryId)}`)
   rmSync(staging, { recursive: true, force: true })
   mkdirSync(staging, { recursive: true })
   try {
-    copyFileSync(sourcePath, join(staging, relativePath))
+    write(join(staging, relativePath))
     rmSync(dir, { recursive: true, force: true })
     mkdirSync(audioRoot, { recursive: true })
     renameSync(staging, dir)
@@ -48,6 +48,30 @@ export function copyLocalAudio(
     throw error
   }
   return { relativePath, originalName }
+}
+
+export function copyLocalAudio(
+  userData: string,
+  entryId: string,
+  sourcePath: string,
+): { relativePath: string; originalName: string } {
+  const originalName = basename(sourcePath)
+  const relativePath = sanitizeFilename(originalName)
+  return writeAudioFile(userData, entryId, relativePath, originalName, (target) => {
+    copyFileSync(sourcePath, target)
+  })
+}
+
+export function writeAudioFromBuffer(
+  userData: string,
+  entryId: string,
+  originalName: string,
+  data: Uint8Array,
+): { relativePath: string; originalName: string } {
+  const relativePath = sanitizeFilename(originalName)
+  return writeAudioFile(userData, entryId, relativePath, originalName, (target) => {
+    writeFileSync(target, Buffer.from(data))
+  })
 }
 
 export function deleteEntryAudio(userData: string, entryId: string): void {

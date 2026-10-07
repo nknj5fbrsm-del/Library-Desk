@@ -96,12 +96,28 @@ textarea {
 
 .toolbar-row {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.toolbar-filters,
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
-.toolbar-spacer {
-  flex: 1;
+.toolbar-filters {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolbar-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .search,
@@ -116,10 +132,17 @@ select,
 
 .search {
   width: min(240px, 28vw);
+  min-width: 140px;
 }
 
 .btn {
   cursor: pointer;
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  padding: 0 12px;
+  line-height: 28px;
 }
 
 .btn:hover:not(:disabled) {

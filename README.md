@@ -48,7 +48,7 @@ Vitest läuft unter Electron (`ELECTRON_RUN_AS_NODE=1`), damit `better-sqlite3` 
 
 ## Export / Import
 
-Export schreibt `.spd.json` mit `format: "suno-prompt-desk"` und `formatVersion: 1`. URL-Audio wird vollständig übernommen, lokale Audiodateien nur als Metadaten ohne Binärdaten. Schema: Spec, Abschnitt 8.
+**Bibliothek sichern** / Eintrag-**Export** schreiben eine `.spd.zip` (eine Datei, inkl. lokaler Audio- und Cover-Dateien). Import akzeptiert `.spd.zip` sowie weiterhin `.spd.json` / Mastermind-JSON. URL-Audio bleibt in der JSON-Metadaten-Datei im Zip.
 
 Import akzeptiert:
 - Desk-Bundle (`format: "suno-prompt-desk"`)

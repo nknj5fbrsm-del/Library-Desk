@@ -37,7 +37,7 @@ export function useCoverAmbience(entry: Entry | null): string {
     return () => {
       cancelled = true
     }
-  }, [entry?.id, entry?.cover?.relativePath])
+  }, [entry?.id, entry?.cover?.relativePath, entry?.updatedAt])
 
   return ambience
 }

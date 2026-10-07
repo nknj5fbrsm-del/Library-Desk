@@ -16,22 +16,37 @@ export function CoverPanel({ entry, busy, onChange }: CoverPanelProps): JSX.Elem
 
   useEffect(() => {
     if (!entry.cover) {
-      setSrc(null)
+      setSrc((prev) => {
+        if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+        return null
+      })
       return
     }
     let cancelled = false
     void getDesk()
       .cover.resolveUrl(entry.id)
       .then((url) => {
-        if (!cancelled) setSrc(url)
+        if (cancelled) {
+          if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+          return
+        }
+        setSrc((prev) => {
+          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+          return url
+        })
       })
       .catch(() => {
-        if (!cancelled) setSrc(null)
+        if (!cancelled) {
+          setSrc((prev) => {
+            if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+            return null
+          })
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [entry.id, entry.cover?.relativePath])
+  }, [entry.id, entry.cover?.relativePath, entry.updatedAt])
 
   async function run(action: () => Promise<Entry | { filePath: string } | null>): Promise<void> {
     setLocalBusy(true)
@@ -158,22 +173,37 @@ export function CoverThumb({ entry }: CoverThumbProps): JSX.Element | null {
 
   useEffect(() => {
     if (!entry.cover) {
-      setSrc(null)
+      setSrc((prev) => {
+        if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+        return null
+      })
       return
     }
     let cancelled = false
     void getDesk()
       .cover.resolveUrl(entry.id)
       .then((url) => {
-        if (!cancelled) setSrc(url)
+        if (cancelled) {
+          if (url?.startsWith('blob:')) URL.revokeObjectURL(url)
+          return
+        }
+        setSrc((prev) => {
+          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+          return url
+        })
       })
       .catch(() => {
-        if (!cancelled) setSrc(null)
+        if (!cancelled) {
+          setSrc((prev) => {
+            if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev)
+            return null
+          })
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [entry.id, entry.cover?.relativePath])
+  }, [entry.id, entry.cover?.relativePath, entry.updatedAt])
 
   if (!src) return null
   return <img className="cover-thumb" src={src} alt="" draggable={false} />

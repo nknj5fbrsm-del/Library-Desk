@@ -28,6 +28,7 @@ const desk: DeskApi = {
   },
   io: {
     exportLibrary: () => ipcRenderer.invoke('io:exportLibrary'),
+    exportEntry: (id: string) => ipcRenderer.invoke('io:exportEntry', id),
     importLibrary: () => ipcRenderer.invoke('io:importLibrary'),
   },
   settings: {

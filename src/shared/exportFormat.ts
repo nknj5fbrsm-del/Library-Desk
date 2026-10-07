@@ -2,13 +2,15 @@ import type { AudioRef, DeskExportBundle, Entry, PublishLink, StarRating } from 
 import { normalizePublishLinks, normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
-export interface ExportAudioLocal {
-  kind: 'local'
-  included: false
-  originalName: string
-}
+export type ExportAudioLocal =
+  | { kind: 'local'; included: false; originalName: string }
+  | { kind: 'local'; included: true; originalName: string; path: string }
 
 export type ExportAudio = Extract<AudioRef, { kind: 'url' }> | ExportAudioLocal | null
+
+export type ExportCover =
+  | { included: false; originalName: string }
+  | { included: true; originalName: string; path: string }
 
 export interface ExportEntryRow {
   id: string
@@ -25,7 +27,24 @@ export interface ExportEntryRow {
   createdAt: string
   updatedAt: string
   audio: ExportAudio
-  cover: { included: false; originalName: string } | null
+  cover: ExportCover | null
+}
+
+export interface ExportMediaRef {
+  path: string
+  originalName: string
+}
+
+/** Entry plus optional zip-relative media paths (for SPD-Zip import). */
+export interface ParsedExportEntry {
+  entry: Entry
+  audioFile: ExportMediaRef | null
+  coverFile: ExportMediaRef | null
+}
+
+export interface EntryExportMediaPaths {
+  audioPath?: string
+  coverPath?: string
 }
 
 function invalid(detail: string): never {
@@ -36,16 +55,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function exportAudio(audio: AudioRef | null): ExportAudio {
+function exportAudio(
+  audio: AudioRef | null,
+  audioPath: string | undefined,
+): ExportAudio {
   if (!audio) return null
   if (audio.kind === 'local') {
+    if (audioPath) {
+      return {
+        kind: 'local',
+        included: true,
+        originalName: audio.originalName,
+        path: audioPath,
+      }
+    }
     return { kind: 'local', included: false, originalName: audio.originalName }
   }
   if (audio.label) return { kind: 'url', href: audio.href, label: audio.label }
   return { kind: 'url', href: audio.href }
 }
 
-export function entryToExportRow(entry: Entry): ExportEntryRow {
+export function entryToExportRow(
+  entry: Entry,
+  media: EntryExportMediaPaths = {},
+): ExportEntryRow {
+  let cover: ExportCover | null = null
+  if (entry.cover) {
+    if (media.coverPath) {
+      cover = {
+        included: true,
+        originalName: entry.cover.originalName,
+        path: media.coverPath,
+      }
+    } else {
+      cover = { included: false, originalName: entry.cover.originalName }
+    }
+  }
   return {
     id: entry.id,
     groupId: entry.groupId,
@@ -60,21 +105,34 @@ export function entryToExportRow(entry: Entry): ExportEntryRow {
     publishLinks: normalizePublishLinks(entry.publishLinks),
     createdAt: new Date(entry.createdAt).toISOString(),
     updatedAt: new Date(entry.updatedAt).toISOString(),
-    audio: exportAudio(entry.audio),
-    cover: entry.cover
-      ? { included: false as const, originalName: entry.cover.originalName }
-      : null,
+    audio: exportAudio(entry.audio, media.audioPath),
+    cover,
   }
 }
 
-export function buildExportBundle(entries: Entry[]): string {
+export function buildExportBundle(
+  entries: Entry[],
+  mediaById: Record<string, EntryExportMediaPaths> = {},
+): string {
   const bundle: DeskExportBundle = {
     format: 'suno-prompt-desk',
     formatVersion: 1,
     exportedAt: new Date().toISOString(),
-    entries: entries.map(entryToExportRow),
+    entries: entries.map((entry) => entryToExportRow(entry, mediaById[entry.id] ?? {})),
   }
   return JSON.stringify(bundle)
+}
+
+/** Safe download/default filename for a single-entry Desk zip export. */
+export function entryExportFilename(entry: Entry): string {
+  const base = entry.title
+    .trim()
+    .replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+    .trim()
+  const stem = base.length > 0 ? base : 'eintrag'
+  return `${stem}.spd.zip`
 }
 
 function requireText(value: unknown, field: string): string {
@@ -129,39 +187,73 @@ function parsePublishLinks(value: unknown): PublishLink[] {
   return normalizePublishLinks(links)
 }
 
-function parseAudio(value: unknown): AudioRef | null {
-  if (value === null || value === undefined) return null
+function parseAudioField(value: unknown): {
+  audio: AudioRef | null
+  audioFile: ExportMediaRef | null
+} {
+  if (value === null || value === undefined) return { audio: null, audioFile: null }
   if (!isRecord(value)) invalid('audio')
-  if (value.kind === 'local') return null
+  if (value.kind === 'local') {
+    const originalName = requireText(value.originalName, 'originalName')
+    if (value.included === true) {
+      const path = requireNonEmpty(value.path, 'audio.path')
+      return { audio: null, audioFile: { path, originalName } }
+    }
+    return { audio: null, audioFile: null }
+  }
   if (value.kind !== 'url') invalid('audio')
   const href = requireNonEmpty(value.href, 'href')
-  if (value.label === undefined) return { kind: 'url', href }
+  if (value.label === undefined) return { audio: { kind: 'url', href }, audioFile: null }
   if (typeof value.label !== 'string') invalid('label')
-  return { kind: 'url', href, label: value.label }
+  return { audio: { kind: 'url', href, label: value.label }, audioFile: null }
 }
 
-function parseEntry(raw: unknown): Entry {
+function parseCoverField(value: unknown): {
+  coverFile: ExportMediaRef | null
+} {
+  if (value === null || value === undefined) return { coverFile: null }
+  if (!isRecord(value)) invalid('cover')
+  const originalName = requireText(value.originalName, 'cover.originalName')
+  if (value.included === true) {
+    const path = requireNonEmpty(value.path, 'cover.path')
+    return { coverFile: { path, originalName } }
+  }
+  return { coverFile: null }
+}
+
+function parseEntryDetailed(raw: unknown): ParsedExportEntry {
   if (!isRecord(raw)) invalid('entries')
+  const { audio, audioFile } = parseAudioField(raw.audio)
+  const { coverFile } = parseCoverField(raw.cover)
   return {
-    id: requireNonEmpty(raw.id, 'id'),
-    groupId: requireNonEmpty(raw.groupId, 'groupId'),
-    version: requireVersion(raw.version),
-    title: normalizeTitle(requireText(raw.title, 'title')),
-    stylePrompt: requireText(raw.stylePrompt, 'stylePrompt'),
-    lyrics: requireText(raw.lyrics, 'lyrics'),
-    notes: requireText(raw.notes, 'notes'),
-    tags: requireTags(raw.tags),
-    rating: parseRating(raw),
-    published: raw.published === undefined ? false : requireBoolean(raw.published, 'published'),
-    publishLinks: raw.publishLinks === undefined ? [] : parsePublishLinks(raw.publishLinks),
-    createdAt: requireIso(raw.createdAt, 'createdAt'),
-    updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
-    audio: parseAudio(raw.audio),
-    cover: null,
+    entry: {
+      id: requireNonEmpty(raw.id, 'id'),
+      groupId: requireNonEmpty(raw.groupId, 'groupId'),
+      version: requireVersion(raw.version),
+      title: normalizeTitle(requireText(raw.title, 'title')),
+      stylePrompt: requireText(raw.stylePrompt, 'stylePrompt'),
+      lyrics: requireText(raw.lyrics, 'lyrics'),
+      notes: requireText(raw.notes, 'notes'),
+      tags: requireTags(raw.tags),
+      rating: parseRating(raw),
+      published: raw.published === undefined ? false : requireBoolean(raw.published, 'published'),
+      publishLinks: raw.publishLinks === undefined ? [] : parsePublishLinks(raw.publishLinks),
+      createdAt: requireIso(raw.createdAt, 'createdAt'),
+      updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
+      audio,
+      cover: null,
+    },
+    audioFile,
+    coverFile,
   }
 }
 
-export function parseExportBundle(raw: unknown): DeskExportBundle & { entries: Entry[] } {
+export function parseExportBundleDetailed(raw: unknown): {
+  format: 'suno-prompt-desk'
+  formatVersion: 1
+  exportedAt: string
+  entries: ParsedExportEntry[]
+} {
   if (!isRecord(raw)) invalid('format')
   if (raw.format !== 'suno-prompt-desk') invalid('format')
   if (raw.formatVersion !== 1) invalid('formatVersion')
@@ -174,6 +266,17 @@ export function parseExportBundle(raw: unknown): DeskExportBundle & { entries: E
     format: 'suno-prompt-desk',
     formatVersion: 1,
     exportedAt: raw.exportedAt,
-    entries: raw.entries.map(parseEntry),
+    entries: raw.entries.map(parseEntryDetailed),
+  }
+}
+
+/** JSON-only parse: local media becomes null on Entry (legacy). */
+export function parseExportBundle(raw: unknown): DeskExportBundle & { entries: Entry[] } {
+  const detailed = parseExportBundleDetailed(raw)
+  return {
+    format: detailed.format,
+    formatVersion: detailed.formatVersion,
+    exportedAt: detailed.exportedAt,
+    entries: detailed.entries.map((item) => item.entry),
   }
 }

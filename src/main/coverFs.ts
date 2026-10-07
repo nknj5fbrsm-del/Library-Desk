@@ -76,6 +76,18 @@ export function copyLocalCover(
   })
 }
 
+export function writeCoverFromBuffer(
+  userData: string,
+  entryId: string,
+  originalName: string,
+  data: Uint8Array,
+): CoverRef {
+  const relativePath = sanitizeFilename(originalName)
+  return writeCoverFile(userData, entryId, relativePath, originalName, (target) => {
+    writeFileSync(target, Buffer.from(data))
+  })
+}
+
 export function deleteEntryCover(userData: string, entryId: string): void {
   rmSync(entryDir(coverRootFor(userData), entryId), { recursive: true, force: true })
 }

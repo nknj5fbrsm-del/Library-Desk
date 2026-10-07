@@ -54,6 +54,7 @@ export interface DeskApi {
   }
   io: {
     exportLibrary(): Promise<{ filePath: string } | null>
+    exportEntry(id: string): Promise<{ filePath: string } | null>
     importLibrary(): Promise<ImportLibraryResult | null>
   }
   settings: {

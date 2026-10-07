@@ -53,6 +53,7 @@ interface EntryEditorProps {
   onDuplicate: (id: string) => Promise<void>
   onCreateVersion: (id: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
+  onExportEntry: (id: string) => Promise<void>
   onSelectVersion: (id: string) => void
   onAudioChange: (entry: Entry) => void
   onCoverChange: (entry: Entry) => void
@@ -280,6 +281,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     onDuplicate,
     onCreateVersion,
     onDelete,
+    onExportEntry,
     onSelectVersion,
     onAudioChange,
     onCoverChange,
@@ -309,6 +311,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   const onDuplicateRef = useRef(onDuplicate)
   const onCreateVersionRef = useRef(onCreateVersion)
   const onDeleteRef = useRef(onDelete)
+  const onExportEntryRef = useRef(onExportEntry)
   const flushRef = useRef<() => Promise<void>>(async () => undefined)
   const copyRef = useRef<(part: CopyPart) => Promise<void>>(async () => undefined)
   const undoRef = useRef<() => boolean>(() => false)
@@ -319,6 +322,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
   onDuplicateRef.current = onDuplicate
   onCreateVersionRef.current = onCreateVersion
   onDeleteRef.current = onDelete
+  onExportEntryRef.current = onExportEntry
 
   function cloneDraft(value: Draft): Draft {
     return {
@@ -830,6 +834,14 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           onClick={() => void runStructural(onDuplicateRef.current)}
         >
           Duplizieren
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={busy}
+          onClick={() => void runStructural(onExportEntryRef.current)}
+        >
+          Export
         </button>
         <button
           type="button"

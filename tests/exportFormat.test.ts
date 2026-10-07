@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 import type { Entry } from '../src/shared/types'
 import {
   buildExportBundle,
+  entryExportFilename,
   entryToExportRow,
   parseExportBundle,
 } from '../src/shared/exportFormat'
@@ -33,6 +34,11 @@ function entry(overrides: Partial<Entry> = {}): Entry {
 describe('export format', () => {
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('builds a safe single-entry export filename', () => {
+    expect(entryExportFilename(entry({ title: 'Hello / World?' }))).toBe('Hello _ World_.spd.zip')
+    expect(entryExportFilename(entry({ title: '   ' }))).toBe('eintrag.spd.zip')
   })
 
   it('serializes url audio fully and timestamps as ISO-8601', () => {

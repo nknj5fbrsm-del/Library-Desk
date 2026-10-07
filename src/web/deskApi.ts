@@ -1,9 +1,11 @@
-import { buildExportBundle } from '../shared/exportFormat'
+import { entryExportFilename } from '../shared/exportFormat'
+import { looksLikeZip } from '../shared/spdZip'
 import type { DeskApi } from '../shared/deskApi'
 import type { ImportLibraryResult } from '../shared/types'
 import * as entries from './entriesStore'
 import { importLibraryJson } from './importLibrary'
 import { openDeskDb } from './idb'
+import { buildWebSpdZip, importWebSpdZip } from './spdBundle'
 import {
   audioMediaId,
   coverMediaId,
@@ -24,16 +26,6 @@ function pickFile(accept: string): Promise<File | null> {
     input.oncancel = () => resolve(null)
     input.click()
   })
-}
-
-function downloadText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
@@ -141,16 +133,28 @@ export async function createWebDeskApi(): Promise<DeskApi> {
     io: {
       exportLibrary: async () => {
         const all = await entries.listEntries(db, { search: '', facet: 'all', sort: 'title' })
-        const json = buildExportBundle(all)
-        const name = `library-desk-${new Date().toISOString().slice(0, 10)}.spd.json`
-        downloadText(name, json)
+        const zip = await buildWebSpdZip(db, all)
+        const name = `library-desk-${new Date().toISOString().slice(0, 10)}.spd.zip`
+        downloadBlob(name, new Blob([zip], { type: 'application/zip' }))
+        return { filePath: name }
+      },
+      exportEntry: async (id) => {
+        const entry = await entries.getEntry(db, id)
+        if (!entry) throw new Error(`Entry not found: ${id}`)
+        const name = entryExportFilename(entry)
+        const zip = await buildWebSpdZip(db, [entry])
+        downloadBlob(name, new Blob([zip], { type: 'application/zip' }))
         return { filePath: name }
       },
       importLibrary: async (): Promise<ImportLibraryResult | null> => {
-        const file = await pickFile('.json,application/json')
+        const file = await pickFile('.spd.zip,.zip,.spd.json,.json,application/zip,application/json')
         if (!file) return null
-        const text = await file.text()
-        const raw = JSON.parse(text) as unknown
+        const buffer = new Uint8Array(await file.arrayBuffer())
+        const lower = file.name.toLowerCase()
+        if (looksLikeZip(buffer) || lower.endsWith('.zip') || lower.endsWith('.spd.zip')) {
+          return importWebSpdZip(db, buffer)
+        }
+        const raw = JSON.parse(new TextDecoder().decode(buffer)) as unknown
         return importLibraryJson(db, raw)
       },
     },

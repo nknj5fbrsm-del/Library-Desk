@@ -138,7 +138,15 @@ export function useLibrary() {
     return run(async () => {
       const result = await getDesk().io.exportLibrary()
       if (!result) return
-      setNotice('Bibliothek exportiert.')
+      setNotice('Bibliothek gesichert.')
+    })
+  }, [run])
+
+  const exportEntry = useCallback((id: string) => {
+    return run(async () => {
+      const result = await getDesk().io.exportEntry(id)
+      if (!result) return
+      setNotice('Eintrag exportiert.')
     })
   }, [run])
 
@@ -222,6 +230,7 @@ export function useLibrary() {
     createNew,
     importLibrary,
     exportLibrary,
+    exportEntry,
     updateEntry,
     duplicateEntry,
     createVersion,

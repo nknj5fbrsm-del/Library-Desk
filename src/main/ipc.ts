@@ -2,7 +2,8 @@ import { copyFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AudioRef } from '../shared/types'
-import { buildExportBundle } from '../shared/exportFormat'
+import { entryExportFilename } from '../shared/exportFormat'
+import { looksLikeZip } from '../shared/spdZip'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
 import {
   copyLocalAudio,
@@ -30,9 +31,14 @@ import {
 } from './entriesRepo'
 import { importLibraryJson } from './importExport'
 import { getSetting, setSetting } from './settingsRepo'
+import { buildSpdZipBuffer, importSpdZipBuffer } from './spdBundle'
 
-const LIBRARY_FILTERS = [
-  { name: 'Bibliothek (Desk / Mastermind)', extensions: ['spd.json', 'json'] },
+const EXPORT_ZIP_FILTERS = [
+  { name: 'Library Desk Zip', extensions: ['spd.zip', 'zip'] },
+]
+
+const IMPORT_FILTERS = [
+  { name: 'Library Desk', extensions: ['spd.zip', 'zip', 'spd.json', 'json'] },
 ]
 
 const AUDIO_FILTERS = [
@@ -222,24 +228,45 @@ export function registerIpc(db: AppDatabase, userData: string): void {
 
   ipcMain.handle('io:exportLibrary', async () => {
     const picked = await saveFile({
-      title: 'Bibliothek exportieren',
-      defaultPath: 'library.spd.json',
-      filters: LIBRARY_FILTERS,
+      title: 'Bibliothek sichern',
+      defaultPath: 'library.spd.zip',
+      filters: EXPORT_ZIP_FILTERS,
     })
     if (picked.canceled || !picked.filePath) return null
     const entries = listEntries(db, { search: '', facet: 'all', sort: 'newest' })
-    writeFileSync(picked.filePath, buildExportBundle(entries), 'utf8')
+    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, entries)
+    writeFileSync(picked.filePath, Buffer.from(zip))
+    return { filePath: picked.filePath }
+  })
+
+  ipcMain.handle('io:exportEntry', async (_event, id: string) => {
+    const entry = getEntry(db, id)
+    if (!entry) throw new Error(`Entry not found: ${id}`)
+    const picked = await saveFile({
+      title: 'Eintrag exportieren',
+      defaultPath: entryExportFilename(entry),
+      filters: EXPORT_ZIP_FILTERS,
+    })
+    if (picked.canceled || !picked.filePath) return null
+    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, [entry])
+    writeFileSync(picked.filePath, Buffer.from(zip))
     return { filePath: picked.filePath }
   })
 
   ipcMain.handle('io:importLibrary', async () => {
     const picked = await openFile({
       title: 'Bibliothek importieren (Desk oder Mastermind)',
-      filters: LIBRARY_FILTERS,
+      filters: IMPORT_FILTERS,
       properties: ['openFile'],
     })
     if (picked.canceled || picked.filePaths.length === 0) return null
-    const raw: unknown = JSON.parse(readFileSync(picked.filePaths[0], 'utf8'))
+    const filePath = picked.filePaths[0]
+    const bytes = new Uint8Array(readFileSync(filePath))
+    const lower = filePath.toLowerCase()
+    if (looksLikeZip(bytes) || lower.endsWith('.zip') || lower.endsWith('.spd.zip')) {
+      return importSpdZipBuffer(db, userData, bytes)
+    }
+    const raw: unknown = JSON.parse(Buffer.from(bytes).toString('utf8'))
     return importLibraryJson(db, userData, raw)
   })
 

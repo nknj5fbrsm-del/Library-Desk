@@ -209,7 +209,7 @@ export default function App(): JSX.Element {
       />
       {isWebDesk ? (
         <div className="web-persist-banner" role="note">
-          Daten bleiben in diesem Browser — Export empfohlen.
+          Daten bleiben in diesem Browser — Bibliothek sichern empfohlen.
         </div>
       ) : null}
       <Toolbar
@@ -305,6 +305,7 @@ export default function App(): JSX.Element {
                 onDuplicate={library.duplicateEntry}
                 onCreateVersion={library.createVersion}
                 onDelete={library.deleteEntry}
+                onExportEntry={library.exportEntry}
                 onSelectVersion={library.select}
                 onAudioChange={library.syncEntry}
                 onCoverChange={library.syncEntry}
