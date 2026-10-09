@@ -398,6 +398,7 @@ export default function App(): JSX.Element {
                 onSelectVersion={library.select}
                 onAudioChange={library.syncEntry}
                 onCoverChange={library.syncEntry}
+                onAttachmentsChange={library.syncEntry}
               />
             </>
           ) : (

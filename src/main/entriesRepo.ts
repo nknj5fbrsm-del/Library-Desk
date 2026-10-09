@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
 import { normalizeEntryKind } from '../shared/entryKind'
-import type { AudioRef, CoverRef, Entry, EntryKind, PublishLink, StarRating } from '../shared/types'
-import { normalizePublishLinks, normalizeRating } from '../shared/types'
+import type {
+  AttachmentRef,
+  AudioRef,
+  CoverRef,
+  Entry,
+  EntryKind,
+  PublishLink,
+  StarRating,
+} from '../shared/types'
+import { normalizeAttachments, normalizePublishLinks, normalizeRating } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
 
@@ -29,6 +37,7 @@ interface EntryRow {
   prompt_body: string | null
   system_role: string | null
   usage_guide: string | null
+  attachments_json: string | null
 }
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -50,12 +59,22 @@ function publishLinksFromRow(row: EntryRow): PublishLink[] {
   }
 }
 
+function attachmentsFromRow(row: EntryRow, kind: EntryKind): AttachmentRef[] {
+  if (kind !== 'general' || !row.attachments_json) return []
+  try {
+    return normalizeAttachments(JSON.parse(row.attachments_json) as AttachmentRef[])
+  } catch {
+    return []
+  }
+}
+
 function rowToEntry(row: EntryRow): Entry {
+  const kind = normalizeEntryKind(row.kind)
   return {
     id: row.id,
     groupId: row.group_id,
     version: row.version,
-    kind: normalizeEntryKind(row.kind),
+    kind,
     title: row.title,
     stylePrompt: row.style_prompt,
     lyrics: row.lyrics,
@@ -71,6 +90,7 @@ function rowToEntry(row: EntryRow): Entry {
     updatedAt: row.updated_at,
     audio: row.audio_json ? (JSON.parse(row.audio_json) as AudioRef) : null,
     cover: row.cover_json ? (JSON.parse(row.cover_json) as CoverRef) : null,
+    attachments: attachmentsFromRow(row, kind),
   }
 }
 
@@ -106,17 +126,21 @@ function insertGenerated(
     publishLinks: PublishLink[]
     audio: AudioRef | null
     cover: CoverRef | null
+    attachments: AttachmentRef[]
   },
 ): Entry {
   const id = randomUUID()
   const timestamp = Date.now()
   const publishLinks = normalizePublishLinks(fields.publishLinks)
+  const attachments =
+    fields.kind === 'general' ? normalizeAttachments(fields.attachments) : []
   db.prepare(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
       tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
-      published, publish_links_json, kind, prompt_body, system_role, usage_guide
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      published, publish_links_json, kind, prompt_body, system_role, usage_guide,
+      attachments_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.groupId,
@@ -138,6 +162,7 @@ function insertGenerated(
     fields.promptBody,
     fields.systemRole,
     fields.usageGuide,
+    JSON.stringify(attachments),
   )
   return requireEntry(db, id)
 }
@@ -145,13 +170,15 @@ function insertGenerated(
 export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'updated' {
   const publishLinks = normalizePublishLinks(entry.publishLinks)
   const kind = normalizeEntryKind(entry.kind)
+  const attachments = kind === 'general' ? normalizeAttachments(entry.attachments) : []
   const existing = getEntry(db, entry.id)
   if (existing) {
     db.prepare(
       `UPDATE entries SET
         group_id = ?, version = ?, title = ?, style_prompt = ?, lyrics = ?, notes = ?,
         tags_json = ?, is_power = ?, rating = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?,
-        published = ?, publish_links_json = ?, kind = ?, prompt_body = ?, system_role = ?, usage_guide = ?
+        published = ?, publish_links_json = ?, kind = ?, prompt_body = ?, system_role = ?, usage_guide = ?,
+        attachments_json = ?
       WHERE id = ?`,
     ).run(
       entry.groupId,
@@ -173,6 +200,7 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
       entry.promptBody ?? '',
       entry.systemRole ?? '',
       entry.usageGuide ?? '',
+      JSON.stringify(attachments),
       entry.id,
     )
     return 'updated'
@@ -182,8 +210,9 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
       tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
-      published, publish_links_json, kind, prompt_body, system_role, usage_guide
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      published, publish_links_json, kind, prompt_body, system_role, usage_guide,
+      attachments_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     entry.id,
     entry.groupId,
@@ -205,6 +234,7 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     entry.promptBody ?? '',
     entry.systemRole ?? '',
     entry.usageGuide ?? '',
+    JSON.stringify(attachments),
   )
   return 'created'
 }
@@ -228,6 +258,7 @@ export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
     publishLinks: kind === 'suno' ? normalizePublishLinks(input.publishLinks) : [],
     audio: kind === 'suno' ? (input.audio ?? null) : null,
     cover: kind === 'suno' ? (input.cover ?? null) : null,
+    attachments: kind === 'general' ? normalizeAttachments(input.attachments) : [],
   })
 }
 
@@ -238,6 +269,12 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     kind === 'suno' ? (patch.audio !== undefined ? patch.audio : existing.audio) : null
   const cover =
     kind === 'suno' ? (patch.cover !== undefined ? patch.cover : existing.cover) : null
+  const attachments =
+    kind === 'general'
+      ? patch.attachments !== undefined
+        ? normalizeAttachments(patch.attachments)
+        : existing.attachments
+      : []
   const rating =
     patch.rating !== undefined ? normalizeRating(patch.rating) : existing.rating
   const published =
@@ -256,7 +293,8 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     `UPDATE entries SET
       title = ?, style_prompt = ?, lyrics = ?, notes = ?, tags_json = ?,
       is_power = ?, rating = ?, updated_at = ?, audio_json = ?, cover_json = ?,
-      published = ?, publish_links_json = ?, prompt_body = ?, system_role = ?, usage_guide = ?
+      published = ?, publish_links_json = ?, prompt_body = ?, system_role = ?, usage_guide = ?,
+      attachments_json = ?
     WHERE id = ?`,
   ).run(
     patch.title !== undefined ? normalizeTitle(patch.title) : existing.title,
@@ -274,6 +312,7 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     patch.promptBody !== undefined ? patch.promptBody : existing.promptBody,
     patch.systemRole !== undefined ? patch.systemRole : existing.systemRole,
     patch.usageGuide !== undefined ? patch.usageGuide : existing.usageGuide,
+    JSON.stringify(attachments),
     id,
   )
   return requireEntry(db, id)
@@ -338,6 +377,7 @@ function copiedContent(source: Entry): {
   publishLinks: PublishLink[]
   audio: AudioRef | null
   cover: CoverRef | null
+  attachments: AttachmentRef[]
 } {
   return {
     kind: source.kind,
@@ -354,6 +394,7 @@ function copiedContent(source: Entry): {
     publishLinks: source.publishLinks.map((link) => ({ ...link })),
     audio: source.audio,
     cover: source.cover,
+    attachments: source.attachments.map((item) => ({ ...item })),
   }
 }
 

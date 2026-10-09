@@ -1,4 +1,5 @@
 import type {
+  AttachmentRef,
   AudioRef,
   CoverRef,
   Entry,
@@ -26,6 +27,7 @@ export interface CreateEntryInput {
   publishLinks?: PublishLink[]
   audio?: AudioRef | null
   cover?: CoverRef | null
+  attachments?: AttachmentRef[]
 }
 
 export type UpdateEntryPatch = CreateEntryInput
@@ -57,6 +59,12 @@ export interface DeskApi {
     resolveUrl(entryId: string): Promise<string | null>
     attachLocal(entryId: string): Promise<Entry | null>
     download(entryId: string): Promise<{ filePath: string } | null>
+    clear(entryId: string): Promise<Entry>
+  }
+  attachments: {
+    attachLocal(entryId: string): Promise<Entry | null>
+    remove(entryId: string, attachmentId: string): Promise<Entry>
+    open(entryId: string, attachmentId: string): Promise<{ filePath: string } | null>
     clear(entryId: string): Promise<Entry>
   }
   io: {

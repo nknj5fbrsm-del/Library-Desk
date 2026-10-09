@@ -50,6 +50,7 @@ describe('db migrate', () => {
     expect(columns).toContain('prompt_body')
     expect(columns).toContain('system_role')
     expect(columns).toContain('usage_guide')
+    expect(columns).toContain('attachments_json')
     const row = db.prepare('SELECT kind FROM entries WHERE id = ?').get('e1') as { kind: string }
     expect(row.kind).toBe('suno')
     db.close()

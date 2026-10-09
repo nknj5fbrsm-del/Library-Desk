@@ -88,6 +88,7 @@ describe('entriesRepo', () => {
     expect(general.systemRole).toBe('Du bist Analyst')
     expect(general.usageGuide).toBe('Als System + User einfügen')
     expect(general.audio).toBeNull()
+    expect(general.attachments).toEqual([])
     expect(general.published).toBe(false)
   })
 

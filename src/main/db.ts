@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS entries (
   kind TEXT NOT NULL DEFAULT 'suno',
   prompt_body TEXT NOT NULL DEFAULT '',
   system_role TEXT NOT NULL DEFAULT '',
-  usage_guide TEXT NOT NULL DEFAULT ''
+  usage_guide TEXT NOT NULL DEFAULT '',
+  attachments_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -73,6 +74,9 @@ export function migrate(db: AppDatabase): void {
   }
   if (!columns.includes('usage_guide')) {
     db.exec(`ALTER TABLE entries ADD COLUMN usage_guide TEXT NOT NULL DEFAULT ''`)
+  }
+  if (!columns.includes('attachments_json')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN attachments_json TEXT NOT NULL DEFAULT '[]'`)
   }
   db.exec('CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind)')
 }

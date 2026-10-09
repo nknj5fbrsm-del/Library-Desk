@@ -22,6 +22,7 @@ function e(partial: Partial<Entry> & Pick<Entry, 'id' | 'title'>): Entry {
     updatedAt: 1,
     audio: null,
     cover: null,
+    attachments: [],
     ...partial,
   }
 }

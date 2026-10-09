@@ -1,12 +1,13 @@
 import { entryExportFilename } from '../shared/exportFormat'
 import { looksLikeZip } from '../shared/spdZip'
 import type { DeskApi } from '../shared/deskApi'
-import type { ImportLibraryResult } from '../shared/types'
+import type { AttachmentRef, Entry, ImportLibraryResult } from '../shared/types'
 import * as entries from './entriesStore'
 import { importLibraryJson } from './importLibrary'
 import { openDeskDb } from './idb'
 import { buildWebSpdZip, importWebSpdZip } from './spdBundle'
 import {
+  attachmentMediaId,
   audioMediaId,
   coverMediaId,
   deleteEntryMedia,
@@ -17,13 +18,29 @@ import {
 } from './mediaStore'
 import * as settings from './settingsStore'
 
-function pickFile(accept: string): Promise<File | null> {
+const ATTACHMENT_ACCEPT =
+  '.pdf,.txt,.md,.markdown,.doc,.docx,.rtf,.csv,.json,.html,.htm,.odt,application/pdf,text/plain,text/markdown'
+
+function pickFile(accept: string, multiple = false): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = accept
+    input.multiple = multiple
     input.onchange = () => resolve(input.files?.[0] ?? null)
     input.oncancel = () => resolve(null)
+    input.click()
+  })
+}
+
+function pickFiles(accept: string): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = accept
+    input.multiple = true
+    input.onchange = () => resolve(Array.from(input.files ?? []))
+    input.oncancel = () => resolve([])
     input.click()
   })
 }
@@ -37,6 +54,66 @@ function downloadBlob(filename: string, blob: Blob): void {
   URL.revokeObjectURL(url)
 }
 
+async function copyOwnedMedia(
+  db: IDBDatabase,
+  sourceId: string,
+  createdId: string,
+): Promise<Entry> {
+  const source = await entries.getEntry(db, sourceId)
+  let created = await entries.getEntry(db, createdId)
+  if (!source || !created) throw new Error(`Entry not found: ${sourceId}`)
+
+  if (source.audio?.kind === 'local') {
+    const media = await getMedia(db, audioMediaId(sourceId))
+    if (media) {
+      await putMedia(db, audioMediaId(createdId), media.blob, media.originalName)
+      created = await entries.updateEntry(db, createdId, {
+        audio: {
+          kind: 'local',
+          relativePath: `idb:${audioMediaId(createdId)}`,
+          originalName: media.originalName,
+        },
+      })
+    } else {
+      created = await entries.updateEntry(db, createdId, { audio: null })
+    }
+  }
+
+  if (source.cover) {
+    const media = await getMedia(db, coverMediaId(sourceId))
+    if (media) {
+      await putMedia(db, coverMediaId(createdId), media.blob, media.originalName)
+      created = await entries.updateEntry(db, createdId, {
+        cover: {
+          relativePath: `idb:${coverMediaId(createdId)}`,
+          originalName: media.originalName,
+        },
+      })
+    } else {
+      created = await entries.updateEntry(db, createdId, { cover: null })
+    }
+  }
+
+  if (source.kind === 'general' && source.attachments.length > 0) {
+    const attachments: AttachmentRef[] = []
+    for (const item of source.attachments) {
+      const media = await getMedia(db, attachmentMediaId(sourceId, item.id))
+      if (!media) continue
+      const nextId = crypto.randomUUID()
+      const mediaId = attachmentMediaId(createdId, nextId)
+      await putMedia(db, mediaId, media.blob, media.originalName)
+      attachments.push({
+        id: nextId,
+        relativePath: `idb:${mediaId}`,
+        originalName: item.originalName,
+      })
+    }
+    created = await entries.updateEntry(db, createdId, { attachments })
+  }
+
+  return created!
+}
+
 export async function createWebDeskApi(): Promise<DeskApi> {
   const db = await openDeskDb()
 
@@ -47,40 +124,22 @@ export async function createWebDeskApi(): Promise<DeskApi> {
       create: (input) => entries.createEntry(db, input),
       update: (id, patch) => entries.updateEntry(db, id, patch),
       delete: async (id) => {
-        await deleteEntryMedia(db, id)
+        const existing = await entries.getEntry(db, id)
+        await deleteEntryMedia(
+          db,
+          id,
+          existing?.attachments.map((item) => item.id) ?? [],
+        )
         await entries.deleteEntry(db, id)
       },
       duplicate: async (id) => {
-        const source = await entries.getEntry(db, id)
         const created = await entries.duplicateEntry(db, id)
-        if (source?.audio?.kind === 'local') {
-          const media = await getMedia(db, audioMediaId(id))
-          if (media) {
-            await putMedia(db, audioMediaId(created.id), media.blob, media.originalName)
-            return entries.updateEntry(db, created.id, {
-              audio: {
-                kind: 'local',
-                relativePath: `idb:${audioMediaId(created.id)}`,
-                originalName: media.originalName,
-              },
-            })
-          }
-        }
-        if (source?.cover) {
-          const media = await getMedia(db, coverMediaId(id))
-          if (media) {
-            await putMedia(db, coverMediaId(created.id), media.blob, media.originalName)
-            return entries.updateEntry(db, created.id, {
-              cover: {
-                relativePath: `idb:${coverMediaId(created.id)}`,
-                originalName: media.originalName,
-              },
-            })
-          }
-        }
-        return created
+        return copyOwnedMedia(db, id, created.id)
       },
-      createVersion: (id) => entries.createVersion(db, id),
+      createVersion: async (id) => {
+        const created = await entries.createVersion(db, id)
+        return copyOwnedMedia(db, id, created.id)
+      },
     },
     audio: {
       attachLocal: async (entryId) => {
@@ -128,6 +187,52 @@ export async function createWebDeskApi(): Promise<DeskApi> {
       clear: async (entryId) => {
         await deleteMedia(db, coverMediaId(entryId))
         return entries.updateEntry(db, entryId, { cover: null })
+      },
+    },
+    attachments: {
+      attachLocal: async (entryId) => {
+        const existing = await entries.getEntry(db, entryId)
+        if (!existing) throw new Error(`Entry not found: ${entryId}`)
+        if (existing.kind !== 'general') throw new Error('Attachments only for general prompts')
+        const files = await pickFiles(ATTACHMENT_ACCEPT)
+        if (files.length === 0) return null
+        const added: AttachmentRef[] = []
+        for (const file of files) {
+          const id = crypto.randomUUID()
+          const mediaId = attachmentMediaId(entryId, id)
+          await putMedia(db, mediaId, file, file.name)
+          added.push({
+            id,
+            relativePath: `idb:${mediaId}`,
+            originalName: file.name,
+          })
+        }
+        return entries.updateEntry(db, entryId, {
+          attachments: [...existing.attachments, ...added],
+        })
+      },
+      remove: async (entryId, attachmentId) => {
+        const existing = await entries.getEntry(db, entryId)
+        if (!existing) throw new Error(`Entry not found: ${entryId}`)
+        const next = existing.attachments.filter((item) => item.id !== attachmentId)
+        const updated = await entries.updateEntry(db, entryId, { attachments: next })
+        await deleteMedia(db, attachmentMediaId(entryId, attachmentId))
+        return updated
+      },
+      open: async (entryId, attachmentId) => {
+        const entry = await entries.getEntry(db, entryId)
+        const target = entry?.attachments.find((item) => item.id === attachmentId)
+        const media = await getMedia(db, attachmentMediaId(entryId, attachmentId))
+        if (!target || !media) throw new Error('Anhang-Datei fehlt')
+        downloadBlob(target.originalName, media.blob)
+        return { filePath: target.originalName }
+      },
+      clear: async (entryId) => {
+        const existing = await entries.getEntry(db, entryId)
+        for (const item of existing?.attachments ?? []) {
+          await deleteMedia(db, attachmentMediaId(entryId, item.id))
+        }
+        return entries.updateEntry(db, entryId, { attachments: [] })
       },
     },
     io: {

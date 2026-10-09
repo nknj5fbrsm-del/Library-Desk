@@ -14,5 +14,6 @@ describe('entryKind', () => {
     expect(hydrated.promptBody).toBe('')
     expect(hydrated.systemRole).toBe('')
     expect(hydrated.usageGuide).toBe('')
+    expect(hydrated.attachments).toEqual([])
   })
 })
