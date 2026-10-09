@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE INDEX IF NOT EXISTS idx_entries_group ON entries(group_id);
 CREATE INDEX IF NOT EXISTS idx_entries_updated ON entries(updated_at);
-CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind);
 `
 
 export function openDatabase(dbPath: string): AppDatabase {
@@ -43,6 +42,8 @@ export function openDatabase(dbPath: string): AppDatabase {
 }
 
 export function migrate(db: AppDatabase): void {
+  // CREATE TABLE IF NOT EXISTS does not add new columns to existing DBs.
+  // Indexes that reference new columns must run only after ALTER TABLE.
   db.exec(SCHEMA)
   const columns = db
     .prepare<[], { name: string }>('PRAGMA table_info(entries)')
@@ -73,4 +74,5 @@ export function migrate(db: AppDatabase): void {
   if (!columns.includes('usage_guide')) {
     db.exec(`ALTER TABLE entries ADD COLUMN usage_guide TEXT NOT NULL DEFAULT ''`)
   }
+  db.exec('CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind)')
 }

@@ -1,5 +1,5 @@
 import { existsSync } from 'fs'
-import { app, BrowserWindow, protocol } from 'electron'
+import { app, BrowserWindow, dialog, protocol } from 'electron'
 import { join } from 'path'
 import { installAppMenu } from './appMenu'
 import { registerDeskAudioProtocol } from './audioProtocol'
@@ -67,7 +67,14 @@ app.whenReady().then(() => {
   const userData = app.getPath('userData')
   installAppMenu()
   registerDeskAudioProtocol(userData)
-  db = openDatabase(join(userData, 'library.db'))
+  try {
+    db = openDatabase(join(userData, 'library.db'))
+  } catch (cause: unknown) {
+    const message = cause instanceof Error ? cause.message : String(cause)
+    dialog.showErrorBox('Library Desk', `Datenbank konnte nicht geöffnet werden:\n${message}`)
+    app.quit()
+    return
+  }
   registerIpc(db, userData)
   createWindow()
 
