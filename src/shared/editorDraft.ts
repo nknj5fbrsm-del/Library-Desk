@@ -5,6 +5,9 @@ export interface EditorDraftFields {
   title: string
   stylePrompt: string
   lyrics: string
+  promptBody: string
+  systemRole: string
+  usageGuide: string
   notes: string
   tags: readonly string[]
   rating: StarRating
@@ -31,6 +34,9 @@ export function sameEditorDraft(a: EditorDraftFields, b: EditorDraftFields): boo
     a.title === b.title &&
     a.stylePrompt === b.stylePrompt &&
     a.lyrics === b.lyrics &&
+    a.promptBody === b.promptBody &&
+    a.systemRole === b.systemRole &&
+    a.usageGuide === b.usageGuide &&
     a.notes === b.notes &&
     a.rating === b.rating &&
     a.published === b.published &&

@@ -7,8 +7,12 @@ function entry(
 ): Entry {
   return {
     title: 'T',
+    kind: 'suno',
     stylePrompt: '',
     lyrics: '',
+    promptBody: '',
+    systemRole: '',
+    usageGuide: '',
     notes: '',
     tags: [],
     rating: 0,

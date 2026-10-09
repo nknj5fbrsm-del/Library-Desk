@@ -27,11 +27,11 @@ beforeEach(async () => {
 
 describe('web entriesStore', () => {
   it('starts empty and creates an entry', async () => {
-    expect(await store.listEntries(db, { search: '', facet: 'all', sort: 'title' })).toEqual([])
+    expect(await store.listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'title' })).toEqual([])
     const created = await store.createEntry(db, { title: 'Hello' })
     expect(created.title).toBe('Hello')
     expect(created.version).toBe(1)
-    const listed = await store.listEntries(db, { search: '', facet: 'all', sort: 'title' })
+    const listed = await store.listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'title' })
     expect(listed).toHaveLength(1)
   })
 
@@ -50,7 +50,7 @@ describe('web entriesStore', () => {
     expect(v2.version).toBe(2)
 
     await store.deleteEntry(db, dup.id)
-    const listed = await store.listEntries(db, { search: '', facet: 'all', sort: 'title' })
+    const listed = await store.listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'title' })
     expect(listed.map((e) => e.id).sort()).toEqual([created.id, v2.id].sort())
   })
 

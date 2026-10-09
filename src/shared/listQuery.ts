@@ -7,6 +7,9 @@ function matchesSearch(entry: Entry, search: string): boolean {
     entry.title,
     entry.stylePrompt,
     entry.lyrics,
+    entry.promptBody,
+    entry.systemRole,
+    entry.usageGuide,
     entry.notes,
     entry.tags.join(' '),
   ]
@@ -22,6 +25,11 @@ function matchesFacet(entry: Entry, facet: ListQuery['facet']): boolean {
   const tag = facet.tag.trim().toLowerCase()
   if (tag.length === 0) return true
   return entry.tags.some((t) => t.toLowerCase() === tag)
+}
+
+function matchesKind(entry: Entry, kind: ListQuery['kind']): boolean {
+  if (kind === 'all') return true
+  return entry.kind === kind
 }
 
 function compareEntries(a: Entry, b: Entry, sort: ListQuery['sort']): number {
@@ -42,7 +50,12 @@ function compareEntries(a: Entry, b: Entry, sort: ListQuery['sort']): number {
 export function filterAndSortEntries(entries: Entry[], query: ListQuery): Entry[] {
   const search = query.search.trim().toLowerCase()
   return entries
-    .filter((entry) => matchesSearch(entry, search) && matchesFacet(entry, query.facet))
+    .filter(
+      (entry) =>
+        matchesSearch(entry, search) &&
+        matchesFacet(entry, query.facet) &&
+        matchesKind(entry, query.kind),
+    )
     .slice()
     .sort((a, b) => compareEntries(a, b, query.sort))
 }

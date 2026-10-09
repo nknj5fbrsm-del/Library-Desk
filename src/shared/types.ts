@@ -16,13 +16,26 @@ export interface PublishLink {
   href: string
 }
 
+/** `suno` = Style/Lyrics-Workflow; `general` = freier KI-/Arbeits-Prompt. */
+export type EntryKind = 'suno' | 'general'
+
+/** Toolbar-Filter: alle Arten oder nur eine. */
+export type KindFilter = 'all' | EntryKind
+
 export interface Entry {
   id: string
   groupId: string
   version: number
+  kind: EntryKind
   title: string
   stylePrompt: string
   lyrics: string
+  /** Haupttext des allgemeinen Prompts (nur `kind: general` relevant). */
+  promptBody: string
+  /** Optionale Rolle / System-Anweisung. */
+  systemRole: string
+  /** Wie der Prompt arbeitet, was er macht, wie er anzuwenden ist. */
+  usageGuide: string
   notes: string
   tags: string[]
   rating: StarRating

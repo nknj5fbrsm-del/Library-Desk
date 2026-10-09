@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
-import type { AudioRef, CoverRef, Entry, PublishLink, StarRating } from '../shared/types'
+import { normalizeEntryKind } from '../shared/entryKind'
+import type { AudioRef, CoverRef, Entry, EntryKind, PublishLink, StarRating } from '../shared/types'
 import { normalizePublishLinks, normalizeRating } from '../shared/types'
 import { normalizeTitle } from '../shared/title'
 import type { AppDatabase } from './db'
@@ -24,6 +25,10 @@ interface EntryRow {
   cover_json: string | null
   published: number | null
   publish_links_json: string | null
+  kind: string | null
+  prompt_body: string | null
+  system_role: string | null
+  usage_guide: string | null
 }
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -50,9 +55,13 @@ function rowToEntry(row: EntryRow): Entry {
     id: row.id,
     groupId: row.group_id,
     version: row.version,
+    kind: normalizeEntryKind(row.kind),
     title: row.title,
     stylePrompt: row.style_prompt,
     lyrics: row.lyrics,
+    promptBody: row.prompt_body ?? '',
+    systemRole: row.system_role ?? '',
+    usageGuide: row.usage_guide ?? '',
     notes: row.notes,
     tags: JSON.parse(row.tags_json) as string[],
     rating: ratingFromRow(row),
@@ -83,9 +92,13 @@ function insertGenerated(
   fields: {
     groupId: string
     version: number
+    kind: EntryKind
     title: string
     stylePrompt: string
     lyrics: string
+    promptBody: string
+    systemRole: string
+    usageGuide: string
     notes: string
     tags: string[]
     rating: StarRating
@@ -102,8 +115,8 @@ function insertGenerated(
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
       tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
-      published, publish_links_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      published, publish_links_json, kind, prompt_body, system_role, usage_guide
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     id,
     fields.groupId,
@@ -121,19 +134,24 @@ function insertGenerated(
     fields.cover ? JSON.stringify(fields.cover) : null,
     fields.published ? 1 : 0,
     JSON.stringify(publishLinks),
+    fields.kind,
+    fields.promptBody,
+    fields.systemRole,
+    fields.usageGuide,
   )
   return requireEntry(db, id)
 }
 
 export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'updated' {
   const publishLinks = normalizePublishLinks(entry.publishLinks)
+  const kind = normalizeEntryKind(entry.kind)
   const existing = getEntry(db, entry.id)
   if (existing) {
     db.prepare(
       `UPDATE entries SET
         group_id = ?, version = ?, title = ?, style_prompt = ?, lyrics = ?, notes = ?,
         tags_json = ?, is_power = ?, rating = ?, created_at = ?, updated_at = ?, audio_json = ?, cover_json = ?,
-        published = ?, publish_links_json = ?
+        published = ?, publish_links_json = ?, kind = ?, prompt_body = ?, system_role = ?, usage_guide = ?
       WHERE id = ?`,
     ).run(
       entry.groupId,
@@ -151,6 +169,10 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
       entry.cover ? JSON.stringify(entry.cover) : null,
       entry.published ? 1 : 0,
       JSON.stringify(publishLinks),
+      kind,
+      entry.promptBody ?? '',
+      entry.systemRole ?? '',
+      entry.usageGuide ?? '',
       entry.id,
     )
     return 'updated'
@@ -160,8 +182,8 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     `INSERT INTO entries (
       id, group_id, version, title, style_prompt, lyrics, notes,
       tags_json, is_power, rating, created_at, updated_at, audio_json, cover_json,
-      published, publish_links_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      published, publish_links_json, kind, prompt_body, system_role, usage_guide
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     entry.id,
     entry.groupId,
@@ -179,43 +201,62 @@ export function upsertFullEntry(db: AppDatabase, entry: Entry): 'created' | 'upd
     entry.cover ? JSON.stringify(entry.cover) : null,
     entry.published ? 1 : 0,
     JSON.stringify(publishLinks),
+    kind,
+    entry.promptBody ?? '',
+    entry.systemRole ?? '',
+    entry.usageGuide ?? '',
   )
   return 'created'
 }
 
 export function createEntry(db: AppDatabase, input: CreateEntryInput): Entry {
+  const kind = normalizeEntryKind(input.kind)
   return insertGenerated(db, {
     groupId: randomUUID(),
     version: 1,
+    kind,
     title: normalizeTitle(input.title ?? ''),
     stylePrompt: input.stylePrompt ?? '',
     lyrics: input.lyrics ?? '',
+    promptBody: input.promptBody ?? '',
+    systemRole: input.systemRole ?? '',
+    usageGuide: input.usageGuide ?? '',
     notes: input.notes ?? '',
     tags: normalizeTags(input.tags),
     rating: normalizeRating(input.rating ?? 0),
-    published: input.published === true,
-    publishLinks: normalizePublishLinks(input.publishLinks),
-    audio: input.audio ?? null,
-    cover: input.cover ?? null,
+    published: kind === 'suno' && input.published === true,
+    publishLinks: kind === 'suno' ? normalizePublishLinks(input.publishLinks) : [],
+    audio: kind === 'suno' ? (input.audio ?? null) : null,
+    cover: kind === 'suno' ? (input.cover ?? null) : null,
   })
 }
 
 export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch): Entry {
   const existing = requireEntry(db, id)
-  const audio = patch.audio !== undefined ? patch.audio : existing.audio
-  const cover = patch.cover !== undefined ? patch.cover : existing.cover
+  const kind = existing.kind
+  const audio =
+    kind === 'suno' ? (patch.audio !== undefined ? patch.audio : existing.audio) : null
+  const cover =
+    kind === 'suno' ? (patch.cover !== undefined ? patch.cover : existing.cover) : null
   const rating =
     patch.rating !== undefined ? normalizeRating(patch.rating) : existing.rating
-  const published = patch.published !== undefined ? patch.published === true : existing.published
+  const published =
+    kind === 'suno'
+      ? patch.published !== undefined
+        ? patch.published === true
+        : existing.published
+      : false
   const publishLinks =
-    patch.publishLinks !== undefined
-      ? normalizePublishLinks(patch.publishLinks)
-      : existing.publishLinks
+    kind === 'suno'
+      ? patch.publishLinks !== undefined
+        ? normalizePublishLinks(patch.publishLinks)
+        : existing.publishLinks
+      : []
   db.prepare(
     `UPDATE entries SET
       title = ?, style_prompt = ?, lyrics = ?, notes = ?, tags_json = ?,
       is_power = ?, rating = ?, updated_at = ?, audio_json = ?, cover_json = ?,
-      published = ?, publish_links_json = ?
+      published = ?, publish_links_json = ?, prompt_body = ?, system_role = ?, usage_guide = ?
     WHERE id = ?`,
   ).run(
     patch.title !== undefined ? normalizeTitle(patch.title) : existing.title,
@@ -230,6 +271,9 @@ export function updateEntry(db: AppDatabase, id: string, patch: UpdateEntryPatch
     cover ? JSON.stringify(cover) : null,
     published ? 1 : 0,
     JSON.stringify(publishLinks),
+    patch.promptBody !== undefined ? patch.promptBody : existing.promptBody,
+    patch.systemRole !== undefined ? patch.systemRole : existing.systemRole,
+    patch.usageGuide !== undefined ? patch.usageGuide : existing.usageGuide,
     id,
   )
   return requireEntry(db, id)
@@ -246,9 +290,14 @@ export function listEntries(db: AppDatabase, query: ListQuery): Entry[] {
 
   if (search.length > 0) {
     where.push(
-      `LOWER(title || ' ' || style_prompt || ' ' || lyrics || ' ' || notes || ' ' || tags_json) LIKE '%' || ? || '%'`,
+      `LOWER(title || ' ' || style_prompt || ' ' || lyrics || ' ' || notes || ' ' || tags_json || ' ' || COALESCE(prompt_body, '') || ' ' || COALESCE(system_role, '') || ' ' || COALESCE(usage_guide, '')) LIKE '%' || ? || '%'`,
     )
     params.push(search)
+  }
+
+  if (query.kind === 'suno' || query.kind === 'general') {
+    where.push(`COALESCE(kind, 'suno') = ?`)
+    params.push(query.kind)
   }
 
   if (query.facet === 'rated') {
@@ -275,9 +324,13 @@ export function listEntries(db: AppDatabase, query: ListQuery): Entry[] {
 }
 
 function copiedContent(source: Entry): {
+  kind: EntryKind
   title: string
   stylePrompt: string
   lyrics: string
+  promptBody: string
+  systemRole: string
+  usageGuide: string
   notes: string
   tags: string[]
   rating: StarRating
@@ -287,9 +340,13 @@ function copiedContent(source: Entry): {
   cover: CoverRef | null
 } {
   return {
+    kind: source.kind,
     title: source.title,
     stylePrompt: source.stylePrompt,
     lyrics: source.lyrics,
+    promptBody: source.promptBody,
+    systemRole: source.systemRole,
+    usageGuide: source.usageGuide,
     notes: source.notes,
     tags: source.tags,
     rating: source.rating,

@@ -132,7 +132,7 @@ export async function createWebDeskApi(): Promise<DeskApi> {
     },
     io: {
       exportLibrary: async () => {
-        const all = await entries.listEntries(db, { search: '', facet: 'all', sort: 'title' })
+        const all = await entries.listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'title' })
         const zip = await buildWebSpdZip(db, all)
         const name = `library-desk-${new Date().toISOString().slice(0, 10)}.spd.zip`
         downloadBlob(name, new Blob([zip], { type: 'application/zip' }))

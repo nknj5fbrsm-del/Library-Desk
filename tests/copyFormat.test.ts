@@ -3,6 +3,7 @@ import {
   formatCopyStyle,
   formatCopyLyrics,
   formatCopyBoth,
+  formatCopyGeneralAll,
 } from '../src/shared/copyFormat'
 
 describe('copy format helpers', () => {
@@ -19,6 +20,13 @@ describe('copy format helpers', () => {
     const lyrics = 'Hello world'
     expect(formatCopyBoth(style, lyrics)).toBe(
       `${style}\n\n---\n\n${lyrics}`,
+    )
+  })
+
+  it('formatCopyGeneralAll skips empty sections', () => {
+    expect(formatCopyGeneralAll('', '', 'Nur Prompt')).toBe('Prompt:\nNur Prompt')
+    expect(formatCopyGeneralAll('Rolle', 'Hinweis', 'Text')).toBe(
+      'Rolle/System:\nRolle\n\n---\n\nAnwendung:\nHinweis\n\n---\n\nPrompt:\nText',
     )
   })
 })

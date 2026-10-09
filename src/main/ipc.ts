@@ -233,7 +233,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
       filters: EXPORT_ZIP_FILTERS,
     })
     if (picked.canceled || !picked.filePath) return null
-    const entries = listEntries(db, { search: '', facet: 'all', sort: 'newest' })
+    const entries = listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'newest' })
     const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, entries)
     writeFileSync(picked.filePath, Buffer.from(zip))
     return { filePath: picked.filePath }

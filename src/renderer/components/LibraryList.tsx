@@ -1,3 +1,4 @@
+import { kindLabel } from '@shared/entryKind'
 import { groupEntriesForDisplay } from '@shared/versionGroups'
 import type { Entry } from '@shared/types'
 import { CoverThumb } from '@renderer/components/CoverThumb'
@@ -68,6 +69,7 @@ export function LibraryList({
             const active = group.versions.some((entry) => entry.id === selectedId)
             const rating = Math.max(...group.versions.map((entry) => entry.rating)) as Entry['rating']
             const hasAudio = group.versions.some((entry) => entry.audio !== null)
+            const kind = group.representative.kind
             const deleteTarget =
               group.versions.find((entry) => entry.id === selectedId) ?? group.representative
             return (
@@ -79,7 +81,15 @@ export function LibraryList({
                     aria-current={active && !showChips ? 'true' : undefined}
                     onClick={() => onSelect(group.representative.id)}
                   >
-                    <CoverThumb entry={group.representative} />
+                    {kind === 'suno' ? <CoverThumb entry={group.representative} /> : null}
+                    <span
+                      className={
+                        kind === 'general' ? 'kind-mark is-general' : 'kind-mark is-suno'
+                      }
+                      title={kindLabel(kind)}
+                    >
+                      {kind === 'general' ? 'Allg.' : 'Suno'}
+                    </span>
                     <span className="group-title">{group.representative.title}</span>
                     <StarRatingDisplay value={rating} />
                     {hasAudio ? (

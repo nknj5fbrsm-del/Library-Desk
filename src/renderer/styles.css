@@ -575,6 +575,53 @@ select,
   line-height: 16px;
 }
 
+.kind-mark {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 2px 7px;
+  line-height: 16px;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  background: var(--bg-raised);
+}
+
+.kind-mark.is-suno {
+  color: var(--accent);
+  border-color: #c5d2cb;
+  background: var(--accent-soft);
+}
+
+.kind-mark.is-general {
+  color: #5a4a2e;
+  border-color: #ddd0b8;
+  background: #f3ead6;
+}
+
+.editor-kind-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-kind-dialog .dialog-message {
+  margin-bottom: 4px;
+}
+
+.new-kind-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.new-kind-choice {
+  width: 100%;
+  justify-content: center;
+}
+
 .audio-mark {
   flex: none;
   display: inline-flex;

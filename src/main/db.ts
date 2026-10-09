@@ -19,7 +19,11 @@ CREATE TABLE IF NOT EXISTS entries (
   audio_json TEXT,
   cover_json TEXT,
   published INTEGER NOT NULL DEFAULT 0,
-  publish_links_json TEXT NOT NULL DEFAULT '[]'
+  publish_links_json TEXT NOT NULL DEFAULT '[]',
+  kind TEXT NOT NULL DEFAULT 'suno',
+  prompt_body TEXT NOT NULL DEFAULT '',
+  system_role TEXT NOT NULL DEFAULT '',
+  usage_guide TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS settings (
@@ -29,6 +33,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE INDEX IF NOT EXISTS idx_entries_group ON entries(group_id);
 CREATE INDEX IF NOT EXISTS idx_entries_updated ON entries(updated_at);
+CREATE INDEX IF NOT EXISTS idx_entries_kind ON entries(kind);
 `
 
 export function openDatabase(dbPath: string): AppDatabase {
@@ -55,5 +60,17 @@ export function migrate(db: AppDatabase): void {
   }
   if (!columns.includes('publish_links_json')) {
     db.exec(`ALTER TABLE entries ADD COLUMN publish_links_json TEXT NOT NULL DEFAULT '[]'`)
+  }
+  if (!columns.includes('kind')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN kind TEXT NOT NULL DEFAULT 'suno'`)
+  }
+  if (!columns.includes('prompt_body')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN prompt_body TEXT NOT NULL DEFAULT ''`)
+  }
+  if (!columns.includes('system_role')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN system_role TEXT NOT NULL DEFAULT ''`)
+  }
+  if (!columns.includes('usage_guide')) {
+    db.exec(`ALTER TABLE entries ADD COLUMN usage_guide TEXT NOT NULL DEFAULT ''`)
   }
 }

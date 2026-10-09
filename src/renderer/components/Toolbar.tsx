@@ -1,15 +1,17 @@
 import { useState, type RefObject } from 'react'
-import type { LibraryFacet, SortMode } from '@shared/types'
+import type { KindFilter, LibraryFacet, SortMode } from '@shared/types'
 
 interface ToolbarProps {
   search: string
   facet: LibraryFacet
+  kind: KindFilter
   sort: SortMode
   tags: string[]
   notice: string | null
   busy: boolean
   onSearch: (value: string) => void
   onFacet: (facet: LibraryFacet) => void
+  onKind: (kind: KindFilter) => void
   onSort: (sort: SortMode) => void
   onCreate: () => void
   onImport: () => void
@@ -20,12 +22,14 @@ interface ToolbarProps {
 export function Toolbar({
   search,
   facet,
+  kind,
   sort,
   tags,
   notice,
   busy,
   onSearch,
   onFacet,
+  onKind,
   onSort,
   onCreate,
   onImport,
@@ -41,7 +45,7 @@ export function Toolbar({
   )
   const knownTags = tagValue && !tagKnown ? [tagValue, ...tags] : tags
   const hasActiveFilter =
-    facetValue !== 'all' || tagValue !== '' || sort !== 'newest'
+    facetValue !== 'all' || tagValue !== '' || sort !== 'newest' || kind !== 'all'
 
   return (
     <header className={filtersOpen ? 'toolbar is-filters-open' : 'toolbar'}>
@@ -58,6 +62,15 @@ export function Toolbar({
             onChange={(event) => onSearch(event.target.value)}
           />
           <div className="toolbar-filter-controls">
+            <select
+              aria-label="Art"
+              value={kind}
+              onChange={(event) => onKind(event.target.value as KindFilter)}
+            >
+              <option value="all">Alle Arten</option>
+              <option value="suno">Suno</option>
+              <option value="general">Allgemein</option>
+            </select>
             <select
               aria-label="Filter"
               value={facetValue}

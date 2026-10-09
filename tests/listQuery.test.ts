@@ -7,8 +7,12 @@ function e(partial: Partial<Entry> & Pick<Entry, 'id' | 'title'>): Entry {
   return {
     groupId: 'g',
     version: 1,
+    kind: 'suno',
     stylePrompt: '',
     lyrics: '',
+    promptBody: '',
+    systemRole: '',
+    usageGuide: '',
     notes: '',
     tags: [],
     rating: 0,
@@ -28,7 +32,7 @@ describe('filterAndSortEntries', () => {
       e({ id: '1', title: 'Alpha', published: true, stylePrompt: 'rock' }),
       e({ id: '2', title: 'Beta', published: false }),
     ]
-    const q: ListQuery = { search: 'alp', facet: 'published', sort: 'title' }
+    const q: ListQuery = { search: 'alp', facet: 'published', kind: 'all', sort: 'title' }
     expect(filterAndSortEntries(rows, q).map((x) => x.id)).toEqual(['1'])
   })
 
@@ -38,7 +42,7 @@ describe('filterAndSortEntries', () => {
       e({ id: '1', title: 'Alpha', rating: 5 }),
       e({ id: '3', title: 'Gamma', rating: 0 }),
     ]
-    const q: ListQuery = { search: '', facet: 'rated', sort: 'title' }
+    const q: ListQuery = { search: '', facet: 'rated', kind: 'all', sort: 'title' }
     expect(filterAndSortEntries(rows, q).map((x) => x.id)).toEqual(['1', '2'])
   })
 
@@ -47,7 +51,22 @@ describe('filterAndSortEntries', () => {
       e({ id: '1', title: 'A', tags: ['Pop'] }),
       e({ id: '2', title: 'B', tags: ['rock'] }),
     ]
-    const q: ListQuery = { search: '', facet: { tag: 'pop' }, sort: 'title' }
+    const q: ListQuery = { search: '', facet: { tag: 'pop' }, kind: 'all', sort: 'title' }
     expect(filterAndSortEntries(rows, q).map((x) => x.id)).toEqual(['1'])
+  })
+
+  it('filters by entry kind', () => {
+    const rows = [
+      e({ id: '1', title: 'Suno', kind: 'suno' }),
+      e({ id: '2', title: 'Prompt', kind: 'general', promptBody: 'hi' }),
+    ]
+    expect(
+      filterAndSortEntries(rows, {
+        search: '',
+        facet: 'all',
+        kind: 'general',
+        sort: 'title',
+      }).map((x) => x.id),
+    ).toEqual(['2'])
   })
 })

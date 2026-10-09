@@ -16,9 +16,13 @@ function bundleEntry(overrides: Partial<Entry> = {}): Entry {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     groupId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     version: 3,
+    kind: 'suno',
     title: 'Importiert',
     stylePrompt: 'velvet',
     lyrics: 'words',
+    promptBody: '',
+    systemRole: '',
+    usageGuide: '',
     notes: 'note',
     tags: ['Night', 'Drive'],
     rating: 5,
@@ -155,10 +159,10 @@ describe('importBundle', () => {
     })
 
     const filePath = join(dir, 'library.spd.json')
-    writeFileSync(filePath, buildExportBundle(listEntries(db, { search: '', facet: 'all', sort: 'title' })))
+    writeFileSync(filePath, buildExportBundle(listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'title' })))
     deleteEntry(db, urlEntry.id)
     deleteEntry(db, localEntry.id)
-    expect(listEntries(db, { search: '', facet: 'all', sort: 'newest' })).toEqual([])
+    expect(listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'newest' })).toEqual([])
 
     const result = importBundle(db, parseExportBundle(JSON.parse(readFileSync(filePath, 'utf8'))))
 

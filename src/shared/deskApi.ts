@@ -2,6 +2,8 @@ import type {
   AudioRef,
   CoverRef,
   Entry,
+  EntryKind,
+  KindFilter,
   LibraryFacet,
   PublishLink,
   SortMode,
@@ -10,9 +12,13 @@ import type {
 import type { ImportLibraryResult } from './types'
 
 export interface CreateEntryInput {
+  kind?: EntryKind
   title?: string
   stylePrompt?: string
   lyrics?: string
+  promptBody?: string
+  systemRole?: string
+  usageGuide?: string
   notes?: string
   tags?: string[]
   rating?: StarRating
@@ -27,6 +33,7 @@ export type UpdateEntryPatch = CreateEntryInput
 export interface ListQuery {
   search: string
   facet: LibraryFacet
+  kind: KindFilter
   sort: SortMode
 }
 
