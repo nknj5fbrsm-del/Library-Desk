@@ -59,7 +59,7 @@ export function writeAttachmentFromBuffer(
   entryId: string,
   originalName: string,
   data: Uint8Array,
-  attachmentId = randomUUID(),
+  attachmentId: string = randomUUID(),
 ): AttachmentRef {
   const relativePath = relativeName(attachmentId, originalName)
   const dir = entryDir(attachmentsRootFor(userData), entryId)
