@@ -4,9 +4,10 @@ import {
   type EntryExportMediaPaths,
 } from '../shared/exportFormat'
 import { mediaZipPath, packSpdZip, unpackSpdZip } from '../shared/spdZip'
-import type { Entry, ImportLibraryResult } from '../shared/types'
+import type { AttachmentRef, Entry, ImportLibraryResult } from '../shared/types'
 import * as entries from './entriesStore'
 import {
+  attachmentMediaId,
   audioMediaId,
   coverMediaId,
   getMedia,
@@ -41,7 +42,20 @@ async function collectMedia(
         paths.coverPath = zipPath
       }
     }
-    if (paths.audioPath || paths.coverPath) mediaById[entry.id] = paths
+    if (entry.attachments.length > 0) {
+      const attachmentPaths: { id: string; path: string }[] = []
+      for (const item of entry.attachments) {
+        const row = await getMedia(db, attachmentMediaId(entry.id, item.id))
+        if (!row) continue
+        const zipPath = mediaZipPath(entry.id, `att_${item.id}_${row.originalName || 'file'}`)
+        files.push({ path: zipPath, data: new Uint8Array(await row.blob.arrayBuffer()) })
+        attachmentPaths.push({ id: item.id, path: zipPath })
+      }
+      if (attachmentPaths.length > 0) paths.attachmentPaths = attachmentPaths
+    }
+    if (paths.audioPath || paths.coverPath || paths.attachmentPaths) {
+      mediaById[entry.id] = paths
+    }
   }
 
   return { mediaById, files }
@@ -91,6 +105,22 @@ export async function importWebSpdZip(
           },
         }
       }
+    }
+    if (item.attachmentFiles.length > 0 && entry.kind === 'general') {
+      const attachments: AttachmentRef[] = []
+      for (const file of item.attachmentFiles) {
+        const bytes = files.get(file.path)
+        if (!bytes) continue
+        const blob = new Blob([bytes])
+        const mediaId = attachmentMediaId(entry.id, file.id)
+        await putMedia(db, mediaId, blob, file.originalName)
+        attachments.push({
+          id: file.id,
+          relativePath: `idb:${mediaId}`,
+          originalName: file.originalName,
+        })
+      }
+      entry = { ...entry, attachments }
     }
     const result = await entries.putFullEntry(db, entry)
     if (result === 'created') created += 1

@@ -7,6 +7,13 @@ export interface CoverRef {
   originalName: string
 }
 
+/** Lokaler Dokument-Anhang (Allgemeine Prompts). */
+export interface AttachmentRef {
+  id: string
+  relativePath: string
+  originalName: string
+}
+
 /** 0 = keine Bewertung, 1–5 Sterne */
 export type StarRating = 0 | 1 | 2 | 3 | 4 | 5
 
@@ -45,6 +52,8 @@ export interface Entry {
   updatedAt: number
   audio: AudioRef | null
   cover: CoverRef | null
+  /** Dokumente zu allgemeinen Prompts (PDF, TXT, …); Suno immer leer. */
+  attachments: AttachmentRef[]
 }
 
 export type LibraryFacet = 'all' | 'rated' | 'published' | { tag: string }
@@ -86,6 +95,22 @@ export function normalizePublishLinks(links: PublishLink[] | undefined): Publish
     if (!href) continue
     const label = typeof link.label === 'string' ? link.label.trim() : ''
     out.push({ id: link.id, label, href })
+  }
+  return out
+}
+
+export function normalizeAttachments(attachments: AttachmentRef[] | undefined): AttachmentRef[] {
+  if (!attachments) return []
+  const out: AttachmentRef[] = []
+  const seen = new Set<string>()
+  for (const item of attachments) {
+    if (!item || typeof item.id !== 'string' || item.id.length === 0) continue
+    if (seen.has(item.id)) continue
+    const relativePath = typeof item.relativePath === 'string' ? item.relativePath.trim() : ''
+    const originalName = typeof item.originalName === 'string' ? item.originalName.trim() : ''
+    if (!relativePath || !originalName) continue
+    seen.add(item.id)
+    out.push({ id: item.id, relativePath, originalName })
   }
   return out
 }

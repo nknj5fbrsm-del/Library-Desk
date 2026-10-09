@@ -12,6 +12,14 @@ import {
   resolveLocalAudioFile,
 } from './audioFs'
 import {
+  attachmentsRootFor,
+  copyAttachmentsBetweenEntries,
+  copyLocalAttachment,
+  deleteAttachmentFile,
+  deleteEntryAttachments,
+  resolveLocalAttachmentFile,
+} from './attachmentFs'
+import {
   copyCoverBetweenEntries,
   copyLocalCover,
   coverDisplayUrl,
@@ -46,6 +54,14 @@ const AUDIO_FILTERS = [
     name: 'Audio',
     extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'aiff', 'aif', 'webm'],
   },
+]
+
+const ATTACHMENT_FILTERS = [
+  {
+    name: 'Dokumente',
+    extensions: ['pdf', 'txt', 'md', 'markdown', 'doc', 'docx', 'rtf', 'csv', 'json', 'html', 'htm', 'odt'],
+  },
+  { name: 'Alle Dateien', extensions: ['*'] },
 ]
 
 function dialogParent(): BrowserWindow | undefined {
@@ -86,6 +102,7 @@ function assertHttpUrl(url: string): string {
 export function registerIpc(db: AppDatabase, userData: string): void {
   const audioRoot = join(userData, 'audio')
   const coverRoot = coverRootFor(userData)
+  const attachmentsRoot = attachmentsRootFor(userData)
 
   function copyOwnedMedia(sourceId: string, createdId: string) {
     let created = getEntry(db, createdId)
@@ -122,6 +139,16 @@ export function registerIpc(db: AppDatabase, userData: string): void {
       }
     }
 
+    if (source.kind === 'general' && source.attachments.length > 0) {
+      const copied = copyAttachmentsBetweenEntries(
+        userData,
+        source.id,
+        created.id,
+        source.attachments,
+      )
+      created = updateEntry(db, created.id, { attachments: copied })
+    }
+
     return created
   }
 
@@ -135,6 +162,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     deleteEntry(db, id)
     deleteEntryAudio(userData, id)
     deleteEntryCover(userData, id)
+    deleteEntryAttachments(userData, id)
   })
   ipcMain.handle('entries:duplicate', (_event, id: string) => {
     const created = duplicateEntry(db, id)
@@ -226,6 +254,49 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     return updated
   })
 
+  ipcMain.handle('attachments:attachLocal', async (_event, entryId: string) => {
+    const existing = getEntry(db, entryId)
+    if (!existing) throw new Error(`Entry not found: ${entryId}`)
+    if (existing.kind !== 'general') throw new Error('Attachments only for general prompts')
+    const picked = await openFile({
+      title: 'Dateien anhängen',
+      filters: ATTACHMENT_FILTERS,
+      properties: ['openFile', 'multiSelections'],
+    })
+    if (picked.canceled || picked.filePaths.length === 0) return null
+    const added = picked.filePaths.map((filePath) => copyLocalAttachment(userData, entryId, filePath))
+    return updateEntry(db, entryId, {
+      attachments: [...existing.attachments, ...added],
+    })
+  })
+
+  ipcMain.handle('attachments:remove', (_event, entryId: string, attachmentId: string) => {
+    const existing = getEntry(db, entryId)
+    if (!existing) throw new Error(`Entry not found: ${entryId}`)
+    const target = existing.attachments.find((item) => item.id === attachmentId)
+    const next = existing.attachments.filter((item) => item.id !== attachmentId)
+    const updated = updateEntry(db, entryId, { attachments: next })
+    if (target) deleteAttachmentFile(userData, entryId, target.relativePath)
+    return updated
+  })
+
+  ipcMain.handle('attachments:open', async (_event, entryId: string, attachmentId: string) => {
+    const entry = getEntry(db, entryId)
+    const target = entry?.attachments.find((item) => item.id === attachmentId)
+    if (!target) throw new Error('Anhang nicht gefunden')
+    const filePath = resolveLocalAttachmentFile(attachmentsRoot, entryId, target.relativePath)
+    if (!existsSync(filePath)) throw new Error('Anhang-Datei fehlt')
+    const error = await shell.openPath(filePath)
+    if (error) throw new Error(error)
+    return { filePath }
+  })
+
+  ipcMain.handle('attachments:clear', (_event, entryId: string) => {
+    const updated = updateEntry(db, entryId, { attachments: [] })
+    deleteEntryAttachments(userData, entryId)
+    return updated
+  })
+
   ipcMain.handle('io:exportLibrary', async () => {
     const picked = await saveFile({
       title: 'Bibliothek sichern',
@@ -234,7 +305,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     })
     if (picked.canceled || !picked.filePath) return null
     const entries = listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'newest' })
-    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, entries)
+    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, attachmentsRoot, entries)
     writeFileSync(picked.filePath, Buffer.from(zip))
     return { filePath: picked.filePath }
   })
@@ -248,7 +319,7 @@ export function registerIpc(db: AppDatabase, userData: string): void {
       filters: EXPORT_ZIP_FILTERS,
     })
     if (picked.canceled || !picked.filePath) return null
-    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, [entry])
+    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, attachmentsRoot, [entry])
     writeFileSync(picked.filePath, Buffer.from(zip))
     return { filePath: picked.filePath }
   })

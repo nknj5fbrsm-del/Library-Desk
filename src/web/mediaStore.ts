@@ -15,6 +15,10 @@ export function coverMediaId(entryId: string): string {
   return `cover:${entryId}`
 }
 
+export function attachmentMediaId(entryId: string, attachmentId: string): string {
+  return `attachment:${entryId}:${attachmentId}`
+}
+
 export async function putMedia(
   db: IDBDatabase,
   id: string,
@@ -44,9 +48,16 @@ export async function deleteMedia(db: IDBDatabase, id: string): Promise<void> {
   await Promise.all([idbReq(req), idbTxDone(tx)])
 }
 
-export async function deleteEntryMedia(db: IDBDatabase, entryId: string): Promise<void> {
+export async function deleteEntryMedia(
+  db: IDBDatabase,
+  entryId: string,
+  attachmentIds: string[] = [],
+): Promise<void> {
   await deleteMedia(db, audioMediaId(entryId))
   await deleteMedia(db, coverMediaId(entryId))
+  for (const attachmentId of attachmentIds) {
+    await deleteMedia(db, attachmentMediaId(entryId, attachmentId))
+  }
 }
 
 export async function resolveObjectUrl(db: IDBDatabase, id: string): Promise<string | null> {

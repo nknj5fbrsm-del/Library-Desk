@@ -32,6 +32,7 @@ function bundleEntry(overrides: Partial<Entry> = {}): Entry {
     updatedAt: UPDATED,
     audio: { kind: 'url', href: 'https://example.com/track.mp3', label: 'demo' },
     cover: null,
+    attachments: [],
     ...overrides,
   }
 }

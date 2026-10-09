@@ -8,9 +8,13 @@ function entry(partial: Partial<Entry> = {}): Entry {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     groupId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
     version: 1,
+    kind: 'suno',
     title: 'Song',
     stylePrompt: 'pop',
     lyrics: 'la',
+    promptBody: '',
+    systemRole: '',
+    usageGuide: '',
     notes: '',
     tags: [],
     rating: 0,
@@ -20,6 +24,7 @@ function entry(partial: Partial<Entry> = {}): Entry {
     updatedAt: 2,
     audio: { kind: 'local', relativePath: 'demo.m4a', originalName: 'demo.m4a' },
     cover: { relativePath: 'cover.png', originalName: 'cover.png' },
+    attachments: [],
     ...partial,
   }
 }

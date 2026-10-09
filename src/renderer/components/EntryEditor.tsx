@@ -66,6 +66,7 @@ interface EntryEditorProps {
   onSelectVersion: (id: string) => void
   onAudioChange: (entry: Entry) => void
   onCoverChange: (entry: Entry) => void
+  onAttachmentsChange: (entry: Entry) => void
 }
 
 function audioActionError(cause: unknown): string {
@@ -73,6 +74,143 @@ function audioActionError(cause: unknown): string {
   if (message === 'Audio URL is empty') return 'Bitte eine Audio-URL eingeben.'
   if (message.startsWith('Entry not found')) return 'Eintrag nicht gefunden.'
   return 'Audio konnte nicht gespeichert werden.'
+}
+
+function attachmentActionError(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : ''
+  if (message.startsWith('Entry not found')) return 'Eintrag nicht gefunden.'
+  if (message.includes('fehlt') || message.includes('nicht gefunden')) return message
+  return 'Anhang konnte nicht verarbeitet werden.'
+}
+
+function AttachmentsPanel({
+  entry,
+  onAttachmentsChange,
+}: {
+  entry: Entry
+  onAttachmentsChange: (entry: Entry) => void
+}): JSX.Element {
+  const [open, setOpen] = useState(() => entry.attachments.length > 0)
+  const [busy, setBusy] = useState(false)
+  const [note, setNote] = useState<string | null>(null)
+  const entryIdRef = useRef(entry.id)
+  const onChangeRef = useRef(onAttachmentsChange)
+  const busyRef = useRef(false)
+  entryIdRef.current = entry.id
+  onChangeRef.current = onAttachmentsChange
+
+  async function run(action: () => Promise<Entry | null>): Promise<void> {
+    if (busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    setNote(null)
+    try {
+      const updated = await action()
+      if (!updated) return
+      if (entryIdRef.current === updated.id) onChangeRef.current(updated)
+    } catch (cause) {
+      setNote(attachmentActionError(cause))
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="editor-accordion" aria-label="Anhänge">
+      <button
+        type="button"
+        className={
+          entry.attachments.length > 0
+            ? 'btn editor-accordion-toggle is-active'
+            : 'btn editor-accordion-toggle'
+        }
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        Anhänge{entry.attachments.length > 0 ? ` (${entry.attachments.length})` : ''}
+      </button>
+      <div className={open ? 'editor-accordion-slot is-open' : 'editor-accordion-slot'}>
+        {open ? (
+          <div className="editor-accordion-body">
+            <div className="editor-actions-row">
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() =>
+                  void run(() => getDesk().attachments.attachLocal(entryIdRef.current))
+                }
+              >
+                Dateien hinzufügen…
+              </button>
+              {entry.attachments.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => void run(() => getDesk().attachments.clear(entryIdRef.current))}
+                >
+                  Alle entfernen
+                </button>
+              ) : null}
+            </div>
+            {entry.attachments.length > 0 ? (
+              <ul className="attachment-list">
+                {entry.attachments.map((item) => (
+                  <li key={item.id} className="attachment-row">
+                    <span className="attachment-name" title={item.originalName}>
+                      {item.originalName}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      onClick={() => {
+                        if (busyRef.current) return
+                        busyRef.current = true
+                        setBusy(true)
+                        setNote(null)
+                        void getDesk()
+                          .attachments.open(entryIdRef.current, item.id)
+                          .catch((cause) => setNote(attachmentActionError(cause)))
+                          .finally(() => {
+                            busyRef.current = false
+                            setBusy(false)
+                          })
+                      }}
+                    >
+                      Öffnen
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={busy}
+                      aria-label={`${item.originalName} entfernen`}
+                      onClick={() =>
+                        void run(() =>
+                          getDesk().attachments.remove(entryIdRef.current, item.id),
+                        )
+                      }
+                    >
+                      Entfernen
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="audio-source">PDF, TXT und weitere Dokumente anhängen</p>
+            )}
+            {note ? (
+              <p className="audio-missing" role="alert">
+                {note}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
 }
 
 function AudioPanel({
@@ -297,6 +435,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     onSelectVersion,
     onAudioChange,
     onCoverChange,
+    onAttachmentsChange,
   },
   ref,
 ): JSX.Element {
@@ -758,7 +897,11 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           onChange={(event) => patchDraft({ notes: event.target.value })}
         />
       </label>
-      {isGeneral ? null : <AudioPanel entry={entry} onAudioChange={onAudioChange} />}
+      {isGeneral ? (
+        <AttachmentsPanel entry={entry} onAttachmentsChange={onAttachmentsChange} />
+      ) : (
+        <AudioPanel entry={entry} onAudioChange={onAudioChange} />
+      )}
       {isGeneral ? null : (
       <section className="editor-accordion" aria-label="Veröffentlicht">
         <button

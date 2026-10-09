@@ -1,5 +1,6 @@
 import { normalizeEntryKind } from './entryKind'
 import type {
+  AttachmentRef,
   AudioRef,
   DeskExportBundle,
   Entry,
@@ -7,7 +8,7 @@ import type {
   PublishLink,
   StarRating,
 } from './types'
-import { normalizePublishLinks, normalizeRating } from './types'
+import { normalizeAttachments, normalizePublishLinks, normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
 export type ExportAudioLocal =
@@ -19,6 +20,10 @@ export type ExportAudio = Extract<AudioRef, { kind: 'url' }> | ExportAudioLocal 
 export type ExportCover =
   | { included: false; originalName: string }
   | { included: true; originalName: string; path: string }
+
+export type ExportAttachment =
+  | { id: string; included: false; originalName: string }
+  | { id: string; included: true; originalName: string; path: string }
 
 export interface ExportEntryRow {
   id: string
@@ -40,6 +45,7 @@ export interface ExportEntryRow {
   updatedAt: string
   audio: ExportAudio
   cover: ExportCover | null
+  attachments: ExportAttachment[]
 }
 
 export interface ExportMediaRef {
@@ -47,16 +53,22 @@ export interface ExportMediaRef {
   originalName: string
 }
 
+export interface ExportAttachmentFile extends ExportMediaRef {
+  id: string
+}
+
 /** Entry plus optional zip-relative media paths (for SPD-Zip import). */
 export interface ParsedExportEntry {
   entry: Entry
   audioFile: ExportMediaRef | null
   coverFile: ExportMediaRef | null
+  attachmentFiles: ExportAttachmentFile[]
 }
 
 export interface EntryExportMediaPaths {
   audioPath?: string
   coverPath?: string
+  attachmentPaths?: { id: string; path: string }[]
 }
 
 function invalid(detail: string): never {
@@ -87,6 +99,20 @@ function exportAudio(
   return { kind: 'url', href: audio.href }
 }
 
+function exportAttachments(
+  attachments: AttachmentRef[],
+  attachmentPaths: { id: string; path: string }[] | undefined,
+): ExportAttachment[] {
+  const pathById = new Map((attachmentPaths ?? []).map((item) => [item.id, item.path]))
+  return attachments.map((item) => {
+    const path = pathById.get(item.id)
+    if (path) {
+      return { id: item.id, included: true, originalName: item.originalName, path }
+    }
+    return { id: item.id, included: false, originalName: item.originalName }
+  })
+}
+
 export function entryToExportRow(
   entry: Entry,
   media: EntryExportMediaPaths = {},
@@ -103,11 +129,14 @@ export function entryToExportRow(
       cover = { included: false, originalName: entry.cover.originalName }
     }
   }
+  const kind = normalizeEntryKind(entry.kind)
+  const attachments =
+    kind === 'general' ? normalizeAttachments(entry.attachments) : []
   return {
     id: entry.id,
     groupId: entry.groupId,
     version: entry.version,
-    kind: normalizeEntryKind(entry.kind),
+    kind,
     title: entry.title,
     stylePrompt: entry.stylePrompt,
     lyrics: entry.lyrics,
@@ -123,6 +152,7 @@ export function entryToExportRow(
     updatedAt: new Date(entry.updatedAt).toISOString(),
     audio: exportAudio(entry.audio, media.audioPath),
     cover,
+    attachments: exportAttachments(attachments, media.attachmentPaths),
   }
 }
 
@@ -237,10 +267,39 @@ function parseCoverField(value: unknown): {
   return { coverFile: null }
 }
 
+function parseAttachmentsField(value: unknown): {
+  attachments: AttachmentRef[]
+  attachmentFiles: ExportAttachmentFile[]
+} {
+  if (value === null || value === undefined) return { attachments: [], attachmentFiles: [] }
+  if (!Array.isArray(value)) invalid('attachments')
+  const attachments: AttachmentRef[] = []
+  const attachmentFiles: ExportAttachmentFile[] = []
+  for (const item of value) {
+    if (!isRecord(item)) invalid('attachments')
+    const id = requireNonEmpty(item.id, 'attachments.id')
+    const originalName = requireText(item.originalName, 'attachments.originalName')
+    if (item.included === true) {
+      const path = requireNonEmpty(item.path, 'attachments.path')
+      attachmentFiles.push({ id, path, originalName })
+      continue
+    }
+    // Metadata-only: keep placeholder so UI can show missing file after JSON-only import.
+    if (originalName) {
+      attachments.push({ id, relativePath: '', originalName })
+    }
+  }
+  return {
+    attachments: attachments.filter((item) => item.relativePath.length > 0),
+    attachmentFiles,
+  }
+}
+
 function parseEntryDetailed(raw: unknown): ParsedExportEntry {
   if (!isRecord(raw)) invalid('entries')
   const { audio, audioFile } = parseAudioField(raw.audio)
   const { coverFile } = parseCoverField(raw.cover)
+  const { attachmentFiles } = parseAttachmentsField(raw.attachments)
   const kind = normalizeEntryKind(raw.kind)
   return {
     entry: {
@@ -266,9 +325,11 @@ function parseEntryDetailed(raw: unknown): ParsedExportEntry {
       updatedAt: requireIso(raw.updatedAt, 'updatedAt'),
       audio,
       cover: null,
+      attachments: [],
     },
     audioFile,
     coverFile,
+    attachmentFiles: kind === 'general' ? attachmentFiles : [],
   }
 }
 

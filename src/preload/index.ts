@@ -26,6 +26,14 @@ const desk: DeskApi = {
     download: (entryId: string) => ipcRenderer.invoke('cover:download', entryId),
     clear: (entryId: string) => ipcRenderer.invoke('cover:clear', entryId),
   },
+  attachments: {
+    attachLocal: (entryId: string) => ipcRenderer.invoke('attachments:attachLocal', entryId),
+    remove: (entryId: string, attachmentId: string) =>
+      ipcRenderer.invoke('attachments:remove', entryId, attachmentId),
+    open: (entryId: string, attachmentId: string) =>
+      ipcRenderer.invoke('attachments:open', entryId, attachmentId),
+    clear: (entryId: string) => ipcRenderer.invoke('attachments:clear', entryId),
+  },
   io: {
     exportLibrary: () => ipcRenderer.invoke('io:exportLibrary'),
     exportEntry: (id: string) => ipcRenderer.invoke('io:exportEntry', id),

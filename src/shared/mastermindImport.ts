@@ -137,6 +137,7 @@ export function mapMastermindItem(raw: unknown): MastermindMapResult {
       updatedAt: lastSaved,
       audio: null,
       cover: null,
+      attachments: [],
     },
     coverDataUrl,
   }

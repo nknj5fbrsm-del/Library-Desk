@@ -2,8 +2,16 @@ import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/de
 import { normalizeEntryKind, withEntryKindDefaults } from '../shared/entryKind'
 import { filterAndSortEntries } from '../shared/listQuery'
 import { normalizeTitle } from '../shared/title'
-import type { AudioRef, CoverRef, Entry, EntryKind, PublishLink, StarRating } from '../shared/types'
-import { normalizePublishLinks, normalizeRating } from '../shared/types'
+import type {
+  AttachmentRef,
+  AudioRef,
+  CoverRef,
+  Entry,
+  EntryKind,
+  PublishLink,
+  StarRating,
+} from '../shared/types'
+import { normalizeAttachments, normalizePublishLinks, normalizeRating } from '../shared/types'
 import { idbReq, idbTxDone, STORE_ENTRIES } from './idb'
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -58,6 +66,7 @@ function buildEntry(fields: {
   publishLinks: PublishLink[]
   audio: AudioRef | null
   cover: CoverRef | null
+  attachments: AttachmentRef[]
 }): Entry {
   const now = Date.now()
   return {
@@ -80,6 +89,7 @@ function buildEntry(fields: {
     updatedAt: now,
     audio: fields.audio,
     cover: fields.cover,
+    attachments: fields.kind === 'general' ? normalizeAttachments(fields.attachments) : [],
   }
 }
 
@@ -102,6 +112,7 @@ export async function createEntry(db: IDBDatabase, input: CreateEntryInput): Pro
     publishLinks: kind === 'suno' ? normalizePublishLinks(input.publishLinks) : [],
     audio: kind === 'suno' ? (input.audio ?? null) : null,
     cover: kind === 'suno' ? (input.cover ?? null) : null,
+    attachments: kind === 'general' ? normalizeAttachments(input.attachments) : [],
   })
   return putEntry(db, entry)
 }
@@ -143,6 +154,12 @@ export async function updateEntry(
       kind === 'suno' ? (patch.audio !== undefined ? patch.audio : existing.audio) : null,
     cover:
       kind === 'suno' ? (patch.cover !== undefined ? patch.cover : existing.cover) : null,
+    attachments:
+      kind === 'general'
+        ? patch.attachments !== undefined
+          ? normalizeAttachments(patch.attachments)
+          : existing.attachments
+        : [],
     updatedAt: Date.now(),
   }
   return putEntry(db, next)
@@ -175,6 +192,7 @@ function copiedContent(source: Entry) {
     publishLinks: source.publishLinks.map((link) => ({ ...link })),
     audio: source.audio,
     cover: source.cover,
+    attachments: source.attachments.map((item) => ({ ...item })),
   }
 }
 

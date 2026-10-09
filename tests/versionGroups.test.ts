@@ -22,6 +22,7 @@ function entry(
     updatedAt: 0,
     audio: null,
     cover: null,
+    attachments: [],
     ...partial,
   }
 }

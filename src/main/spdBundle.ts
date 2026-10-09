@@ -6,16 +6,20 @@ import {
   type EntryExportMediaPaths,
 } from '../shared/exportFormat'
 import { mediaZipPath, packSpdZip, unpackSpdZip } from '../shared/spdZip'
-import type { Entry, ImportLibraryResult } from '../shared/types'
+import type { AttachmentRef, Entry, ImportLibraryResult } from '../shared/types'
 import { resolveLocalAudioFile, writeAudioFromBuffer } from './audioFs'
+import {
+  resolveLocalAttachmentFile,
+  writeAttachmentFromBuffer,
+} from './attachmentFs'
 import { resolveLocalCoverFile, writeCoverFromBuffer } from './coverFs'
 import type { AppDatabase } from './db'
 import { upsertFullEntry } from './entriesRepo'
 
 function collectMedia(
-  userData: string,
   audioRoot: string,
   coverRoot: string,
+  attachmentsRoot: string,
   entries: Entry[],
 ): {
   mediaById: Record<string, EntryExportMediaPaths>
@@ -50,7 +54,28 @@ function collectMedia(
         // missing / invalid → metadata-only
       }
     }
-    if (paths.audioPath || paths.coverPath) mediaById[entry.id] = paths
+    if (entry.attachments.length > 0) {
+      const attachmentPaths: { id: string; path: string }[] = []
+      for (const item of entry.attachments) {
+        try {
+          const filePath = resolveLocalAttachmentFile(
+            attachmentsRoot,
+            entry.id,
+            item.relativePath,
+          )
+          if (!existsSync(filePath)) continue
+          const zipPath = mediaZipPath(entry.id, `att_${item.id}_${basename(item.relativePath)}`)
+          files.push({ path: zipPath, data: new Uint8Array(readFileSync(filePath)) })
+          attachmentPaths.push({ id: item.id, path: zipPath })
+        } catch {
+          // skip
+        }
+      }
+      if (attachmentPaths.length > 0) paths.attachmentPaths = attachmentPaths
+    }
+    if (paths.audioPath || paths.coverPath || paths.attachmentPaths) {
+      mediaById[entry.id] = paths
+    }
   }
 
   return { mediaById, files }
@@ -60,9 +85,10 @@ export async function buildSpdZipBuffer(
   userData: string,
   audioRoot: string,
   coverRoot: string,
+  attachmentsRoot: string,
   entries: Entry[],
 ): Promise<Uint8Array> {
-  const { mediaById, files } = collectMedia(userData, audioRoot, coverRoot, entries)
+  const { mediaById, files } = collectMedia(audioRoot, coverRoot, attachmentsRoot, entries)
   const json = buildExportBundle(entries, mediaById)
   return packSpdZip(json, files)
 }
@@ -110,6 +136,22 @@ export async function importSpdZipBuffer(
         )
         entry = { ...entry, cover: written }
       }
+    }
+    if (item.attachmentFiles.length > 0 && entry.kind === 'general') {
+      const attachments: AttachmentRef[] = []
+      for (const file of item.attachmentFiles) {
+        const bytes = files.get(file.path)
+        if (!bytes) continue
+        const written = writeAttachmentFromBuffer(
+          userData,
+          entry.id,
+          file.originalName,
+          bytes,
+          file.id,
+        )
+        attachments.push(written)
+      }
+      entry = { ...entry, attachments }
     }
     const result = upsertFullEntry(db, entry)
     if (result === 'created') created += 1
