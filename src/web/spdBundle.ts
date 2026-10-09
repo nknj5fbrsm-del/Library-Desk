@@ -3,6 +3,7 @@ import {
   parseExportBundleDetailed,
   type EntryExportMediaPaths,
 } from '../shared/exportFormat'
+import { mimeFromFilename } from '../shared/mime'
 import { mediaZipPath, packSpdZip, unpackSpdZip } from '../shared/spdZip'
 import type { AttachmentRef, Entry, ImportLibraryResult } from '../shared/types'
 import * as entries from './entriesStore'
@@ -111,7 +112,8 @@ export async function importWebSpdZip(
       for (const file of item.attachmentFiles) {
         const bytes = files.get(file.path)
         if (!bytes) continue
-        const blob = new Blob([bytes])
+        const mime = mimeFromFilename(file.originalName)
+        const blob = new Blob([bytes], { type: mime })
         const mediaId = attachmentMediaId(entry.id, file.id)
         await putMedia(db, mediaId, blob, file.originalName)
         attachments.push({
