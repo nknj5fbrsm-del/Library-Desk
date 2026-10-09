@@ -1,3 +1,4 @@
+import { mimeFromFilename } from '../shared/mime'
 import { idbReq, idbTxDone, STORE_MEDIA } from './idb'
 
 export interface MediaRow {
@@ -25,10 +26,13 @@ export async function putMedia(
   blob: Blob,
   originalName: string,
 ): Promise<void> {
+  const mimeType = blob.type || mimeFromFilename(originalName)
+  const typed =
+    blob.type === mimeType ? blob : new Blob([await blob.arrayBuffer()], { type: mimeType })
   const row: MediaRow = {
     id,
-    blob,
-    mimeType: blob.type || 'application/octet-stream',
+    blob: typed,
+    mimeType,
     originalName,
   }
   const tx = db.transaction(STORE_MEDIA, 'readwrite')

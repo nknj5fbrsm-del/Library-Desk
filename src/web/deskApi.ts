@@ -1,4 +1,5 @@
 import { entryExportFilename } from '../shared/exportFormat'
+import { canOpenInBrowser, mimeFromFilename } from '../shared/mime'
 import { looksLikeZip } from '../shared/spdZip'
 import type { DeskApi } from '../shared/deskApi'
 import type { AttachmentRef, Entry, ImportLibraryResult } from '../shared/types'
@@ -58,6 +59,29 @@ function downloadBlob(filename: string, blob: Blob): void {
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+async function blobWithMime(blob: Blob, originalName: string): Promise<{ blob: Blob; mime: string }> {
+  const mime =
+    blob.type && blob.type !== 'application/octet-stream'
+      ? blob.type
+      : mimeFromFilename(originalName)
+  if (blob.type === mime) return { blob, mime }
+  return { blob: new Blob([await blob.arrayBuffer()], { type: mime }), mime }
+}
+
+async function openOrDownloadBlob(originalName: string, source: Blob): Promise<void> {
+  const { blob, mime } = await blobWithMime(source, originalName)
+  if (canOpenInBrowser(mime)) {
+    const url = URL.createObjectURL(blob)
+    const opened = window.open(url, '_blank', 'noopener,noreferrer')
+    if (opened) {
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      return
+    }
+    URL.revokeObjectURL(url)
+  }
+  downloadBlob(originalName, blob)
 }
 
 async function copyOwnedMedia(
@@ -231,7 +255,7 @@ export async function createWebDeskApi(): Promise<DeskApi> {
         const target = entry?.attachments.find((item) => item.id === attachmentId)
         const media = await getMedia(db, attachmentMediaId(entryId, attachmentId))
         if (!target || !media) throw new Error('Anhang-Datei fehlt')
-        downloadBlob(target.originalName, media.blob)
+        await openOrDownloadBlob(target.originalName, media.blob)
         return { filePath: target.originalName }
       },
       clear: async (entryId) => {
