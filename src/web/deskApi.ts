@@ -21,28 +21,34 @@ import * as settings from './settingsStore'
 const ATTACHMENT_ACCEPT =
   '.pdf,.txt,.md,.markdown,.doc,.docx,.rtf,.csv,.json,.html,.htm,.odt,application/pdf,text/plain,text/markdown'
 
-function pickFile(accept: string, multiple = false): Promise<File | null> {
+function pickWithInput(accept: string, multiple: boolean): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = accept
     input.multiple = multiple
-    input.onchange = () => resolve(input.files?.[0] ?? null)
-    input.oncancel = () => resolve(null)
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+    input.style.width = '0'
+    input.style.height = '0'
+    input.style.opacity = '0'
+    const finish = (files: File[]) => {
+      input.remove()
+      resolve(files)
+    }
+    input.onchange = () => finish(Array.from(input.files ?? []))
+    input.oncancel = () => finish([])
+    document.body.appendChild(input)
     input.click()
   })
 }
 
+function pickFile(accept: string): Promise<File | null> {
+  return pickWithInput(accept, false).then((files) => files[0] ?? null)
+}
+
 function pickFiles(accept: string): Promise<File[]> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = accept
-    input.multiple = true
-    input.onchange = () => resolve(Array.from(input.files ?? []))
-    input.oncancel = () => resolve([])
-    input.click()
-  })
+  return pickWithInput(accept, true)
 }
 
 function downloadBlob(filename: string, blob: Blob): void {
@@ -191,11 +197,12 @@ export async function createWebDeskApi(): Promise<DeskApi> {
     },
     attachments: {
       attachLocal: async (entryId) => {
+        // File-Picker muss in derselben User-Geste starten — kein await davor.
+        const files = await pickFiles(ATTACHMENT_ACCEPT)
+        if (files.length === 0) return null
         const existing = await entries.getEntry(db, entryId)
         if (!existing) throw new Error(`Entry not found: ${entryId}`)
         if (existing.kind !== 'general') throw new Error('Attachments only for general prompts')
-        const files = await pickFiles(ATTACHMENT_ACCEPT)
-        if (files.length === 0) return null
         const added: AttachmentRef[] = []
         for (const file of files) {
           const id = crypto.randomUUID()

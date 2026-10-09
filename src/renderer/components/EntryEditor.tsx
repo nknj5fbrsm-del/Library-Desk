@@ -138,9 +138,11 @@ function AttachmentsPanel({
                 type="button"
                 className="btn"
                 disabled={busy}
-                onClick={() =>
-                  void run(() => getDesk().attachments.attachLocal(entryIdRef.current))
-                }
+                onClick={() => {
+                  // attachLocal sofort starten (Web: File-Picker braucht die User-Geste).
+                  const pending = getDesk().attachments.attachLocal(entryIdRef.current)
+                  void run(() => pending)
+                }}
               >
                 Dateien hinzufügen…
               </button>

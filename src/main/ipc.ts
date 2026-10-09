@@ -61,7 +61,6 @@ const ATTACHMENT_FILTERS = [
     name: 'Dokumente',
     extensions: ['pdf', 'txt', 'md', 'markdown', 'doc', 'docx', 'rtf', 'csv', 'json', 'html', 'htm', 'odt'],
   },
-  { name: 'Alle Dateien', extensions: ['*'] },
 ]
 
 function dialogParent(): BrowserWindow | undefined {
