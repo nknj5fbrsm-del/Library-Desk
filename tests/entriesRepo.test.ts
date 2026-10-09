@@ -64,13 +64,31 @@ describe('entriesRepo', () => {
 
     const defaults = createEntry(db, {})
     expect(defaults.title).toBe('Ohne Titel')
+    expect(defaults.kind).toBe('suno')
     expect(defaults.stylePrompt).toBe('')
     expect(defaults.lyrics).toBe('')
+    expect(defaults.promptBody).toBe('')
+    expect(defaults.systemRole).toBe('')
+    expect(defaults.usageGuide).toBe('')
     expect(defaults.notes).toBe('')
     expect(defaults.tags).toEqual([])
     expect(defaults.rating).toBe(0)
     expect(defaults.audio).toBeNull()
     expect(defaults.version).toBe(1)
+
+    const general = createEntry(db, {
+      kind: 'general',
+      title: 'Analyse',
+      promptBody: 'Analysiere den Song',
+      systemRole: 'Du bist Analyst',
+      usageGuide: 'Als System + User einfügen',
+    })
+    expect(general.kind).toBe('general')
+    expect(general.promptBody).toBe('Analysiere den Song')
+    expect(general.systemRole).toBe('Du bist Analyst')
+    expect(general.usageGuide).toBe('Als System + User einfügen')
+    expect(general.audio).toBeNull()
+    expect(general.published).toBe(false)
   })
 
   it('update changes fields and updatedAt, keeps identity timestamps', () => {
@@ -127,7 +145,7 @@ describe('entriesRepo', () => {
     })
     createEntry(db, { title: 'Other', stylePrompt: 'rock' })
 
-    const base = { search: '', facet: 'all' as const, sort: 'newest' as const }
+    const base = { search: '', facet: 'all' as const, kind: 'all' as const, sort: 'newest' as const }
 
     expect(listEntries(db, { ...base, facet: 'rated' }).map((e) => e.id)).toEqual([
       power.id,
@@ -148,7 +166,7 @@ describe('entriesRepo', () => {
       power.id,
     ])
     expect(
-      listEntries(db, { search: 'velvet', facet: 'rated', sort: 'newest' }).map(
+      listEntries(db, { search: 'velvet', facet: 'rated', kind: 'all', sort: 'newest' }).map(
         (e) => e.id,
       ),
     ).toEqual([power.id])
@@ -164,7 +182,7 @@ describe('entriesRepo', () => {
     const third = createEntry(db, { title: 'beta' })
 
     const ids = (sort: 'title' | 'newest' | 'updated') =>
-      listEntries(db, { search: '', facet: 'all', sort }).map((e) => e.id)
+      listEntries(db, { search: '', facet: 'all', kind: 'all', sort }).map((e) => e.id)
 
     expect(ids('title')).toEqual([second.id, third.id, first.id])
     expect(ids('newest')).toEqual([third.id, second.id, first.id])
@@ -234,7 +252,7 @@ describe('entriesRepo', () => {
     const created = createEntry(db, { title: 'Gone' })
     deleteEntry(db, created.id)
     expect(getEntry(db, created.id)).toBeNull()
-    expect(listEntries(db, { search: '', facet: 'all', sort: 'newest' })).toEqual([])
+    expect(listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'newest' })).toEqual([])
   })
 
   it('persists published flag and publish links; filter published', () => {
@@ -258,7 +276,7 @@ describe('entriesRepo', () => {
     expect(updated.published).toBe(false)
     expect(updated.publishLinks).toEqual(live.publishLinks)
 
-    const base = { search: '', facet: 'all' as const, sort: 'newest' as const }
+    const base = { search: '', facet: 'all' as const, kind: 'all' as const, sort: 'newest' as const }
     expect(listEntries(db, { ...base, facet: 'published' }).map((e) => e.id)).toEqual([])
     updateEntry(db, live.id, { published: true })
     expect(listEntries(db, { ...base, facet: 'published' }).map((e) => e.id)).toEqual([

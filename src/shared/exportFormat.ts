@@ -1,4 +1,12 @@
-import type { AudioRef, DeskExportBundle, Entry, PublishLink, StarRating } from './types'
+import { normalizeEntryKind } from './entryKind'
+import type {
+  AudioRef,
+  DeskExportBundle,
+  Entry,
+  EntryKind,
+  PublishLink,
+  StarRating,
+} from './types'
 import { normalizePublishLinks, normalizeRating } from './types'
 import { normalizeTitle } from './title'
 
@@ -16,9 +24,13 @@ export interface ExportEntryRow {
   id: string
   groupId: string
   version: number
+  kind: EntryKind
   title: string
   stylePrompt: string
   lyrics: string
+  promptBody: string
+  systemRole: string
+  usageGuide: string
   notes: string
   tags: string[]
   rating: StarRating
@@ -95,9 +107,13 @@ export function entryToExportRow(
     id: entry.id,
     groupId: entry.groupId,
     version: entry.version,
+    kind: normalizeEntryKind(entry.kind),
     title: entry.title,
     stylePrompt: entry.stylePrompt,
     lyrics: entry.lyrics,
+    promptBody: entry.promptBody ?? '',
+    systemRole: entry.systemRole ?? '',
+    usageGuide: entry.usageGuide ?? '',
     notes: entry.notes,
     tags: [...entry.tags],
     rating: entry.rating,
@@ -225,14 +241,22 @@ function parseEntryDetailed(raw: unknown): ParsedExportEntry {
   if (!isRecord(raw)) invalid('entries')
   const { audio, audioFile } = parseAudioField(raw.audio)
   const { coverFile } = parseCoverField(raw.cover)
+  const kind = normalizeEntryKind(raw.kind)
   return {
     entry: {
       id: requireNonEmpty(raw.id, 'id'),
       groupId: requireNonEmpty(raw.groupId, 'groupId'),
       version: requireVersion(raw.version),
+      kind,
       title: normalizeTitle(requireText(raw.title, 'title')),
       stylePrompt: requireText(raw.stylePrompt, 'stylePrompt'),
       lyrics: requireText(raw.lyrics, 'lyrics'),
+      promptBody:
+        raw.promptBody === undefined ? '' : requireText(raw.promptBody, 'promptBody'),
+      systemRole:
+        raw.systemRole === undefined ? '' : requireText(raw.systemRole, 'systemRole'),
+      usageGuide:
+        raw.usageGuide === undefined ? '' : requireText(raw.usageGuide, 'usageGuide'),
       notes: requireText(raw.notes, 'notes'),
       tags: requireTags(raw.tags),
       rating: parseRating(raw),

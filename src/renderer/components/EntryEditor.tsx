@@ -1,9 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import {
   formatCopyBoth,
+  formatCopyGeneralAll,
   formatCopyLyrics,
+  formatCopyPromptBody,
   formatCopyStyle,
+  formatCopySystemRole,
+  formatCopyUsageGuide,
 } from '@shared/copyFormat'
+import { kindLabel } from '@shared/entryKind'
 import type { UpdateEntryPatch } from '@shared/deskApi'
 import { applyExternalEntry, sameEditorDraft } from '@shared/editorDraft'
 import { titleForEditor } from '@shared/title'
@@ -26,6 +31,9 @@ interface Draft {
   title: string
   stylePrompt: string
   lyrics: string
+  promptBody: string
+  systemRole: string
+  usageGuide: string
   notes: string
   tags: string[]
   rating: StarRating
@@ -34,7 +42,7 @@ interface Draft {
 }
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error'
-type CopyPart = 'style' | 'lyrics' | 'both'
+type CopyPart = 'style' | 'lyrics' | 'both' | 'prompt' | 'role' | 'usage' | 'generalAll'
 
 export interface EditorHandle {
   flush: () => Promise<void>
@@ -248,6 +256,9 @@ function toDraft(entry: Entry): Draft {
     title: titleForEditor(entry.title),
     stylePrompt: entry.stylePrompt,
     lyrics: entry.lyrics,
+    promptBody: entry.promptBody,
+    systemRole: entry.systemRole,
+    usageGuide: entry.usageGuide,
     notes: entry.notes,
     tags: [...entry.tags],
     rating: entry.rating,
@@ -407,6 +418,9 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
       title: sent.title,
       stylePrompt: sent.stylePrompt,
       lyrics: sent.lyrics,
+      promptBody: sent.promptBody,
+      systemRole: sent.systemRole,
+      usageGuide: sent.usageGuide,
       notes: sent.notes,
       tags: [...sent.tags],
       rating: sent.rating,
@@ -459,7 +473,19 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
         ? formatCopyStyle(current.stylePrompt)
         : part === 'lyrics'
           ? formatCopyLyrics(current.lyrics)
-          : formatCopyBoth(current.stylePrompt, current.lyrics)
+          : part === 'both'
+            ? formatCopyBoth(current.stylePrompt, current.lyrics)
+            : part === 'prompt'
+              ? formatCopyPromptBody(current.promptBody)
+              : part === 'role'
+                ? formatCopySystemRole(current.systemRole)
+                : part === 'usage'
+                  ? formatCopyUsageGuide(current.usageGuide)
+                  : formatCopyGeneralAll(
+                      current.systemRole,
+                      current.usageGuide,
+                      current.promptBody,
+                    )
     try {
       await navigator.clipboard.writeText(text)
       setCopyNote('Kopiert')
@@ -540,11 +566,18 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           ? 'Speichern fehlgeschlagen'
           : null
 
+  const isGeneral = entry.kind === 'general'
+
   return (
-    <div className="editor">
+    <div className={isGeneral ? 'editor is-general' : 'editor is-suno'}>
       <div className="editor-head">
-        <CoverPanel entry={entry} busy={busy} onChange={onCoverChange} />
+        {isGeneral ? null : <CoverPanel entry={entry} busy={busy} onChange={onCoverChange} />}
         <div className="editor-head-main">
+          <div className="editor-kind-row">
+            <span className={isGeneral ? 'kind-mark is-general' : 'kind-mark is-suno'}>
+              {kindLabel(entry.kind)}
+            </span>
+          </div>
           <input
             className="title-input"
             aria-label="Titel"
@@ -659,25 +692,63 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           />
         </div>
       </div>
-      <label className="field">
-        <span className="field-label">Style</span>
-        <textarea
-          className="field-input"
-          aria-label="Style"
-          value={draft.stylePrompt}
-          spellCheck={false}
-          onChange={(event) => patchDraft({ stylePrompt: event.target.value })}
-        />
-      </label>
-      <label className="field">
-        <span className="field-label">Lyrics</span>
-        <textarea
-          className="field-input"
-          aria-label="Lyrics"
-          value={draft.lyrics}
-          onChange={(event) => patchDraft({ lyrics: event.target.value })}
-        />
-      </label>
+      {isGeneral ? (
+        <>
+          <label className="field">
+            <span className="field-label">Rolle / System</span>
+            <textarea
+              className="field-input field-notes"
+              aria-label="Rolle / System"
+              placeholder="Optionale System- oder Rollenanweisung…"
+              value={draft.systemRole}
+              spellCheck={false}
+              onChange={(event) => patchDraft({ systemRole: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Anwendung</span>
+            <textarea
+              className="field-input"
+              aria-label="Anwendung"
+              placeholder="Wie arbeitet der Prompt, was macht er, wie ist er anzuwenden…"
+              value={draft.usageGuide}
+              onChange={(event) => patchDraft({ usageGuide: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Prompt</span>
+            <textarea
+              className="field-input"
+              aria-label="Prompt"
+              value={draft.promptBody}
+              spellCheck={false}
+              onChange={(event) => patchDraft({ promptBody: event.target.value })}
+            />
+          </label>
+        </>
+      ) : (
+        <>
+          <label className="field">
+            <span className="field-label">Style</span>
+            <textarea
+              className="field-input"
+              aria-label="Style"
+              value={draft.stylePrompt}
+              spellCheck={false}
+              onChange={(event) => patchDraft({ stylePrompt: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span className="field-label">Lyrics</span>
+            <textarea
+              className="field-input"
+              aria-label="Lyrics"
+              value={draft.lyrics}
+              onChange={(event) => patchDraft({ lyrics: event.target.value })}
+            />
+          </label>
+        </>
+      )}
       <label className="field">
         <span className="field-label">Notizen</span>
         <textarea
@@ -687,7 +758,8 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           onChange={(event) => patchDraft({ notes: event.target.value })}
         />
       </label>
-      <AudioPanel entry={entry} onAudioChange={onAudioChange} />
+      {isGeneral ? null : <AudioPanel entry={entry} onAudioChange={onAudioChange} />}
+      {isGeneral ? null : (
       <section className="editor-accordion" aria-label="Veröffentlicht">
         <button
           type="button"
@@ -824,6 +896,7 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           ) : null}
         </div>
       </section>
+      )}
       <p className="meta">
         Erstellt {timeFormat.format(entry.createdAt)}
         {' · '}
@@ -856,15 +929,34 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
           Löschen
         </button>
         <span className="action-gap" />
-        <button type="button" className="btn" onClick={() => void copyPart('style')}>
-          Style kopieren
-        </button>
-        <button type="button" className="btn" onClick={() => void copyPart('lyrics')}>
-          Lyrics kopieren
-        </button>
-        <button type="button" className="btn" onClick={() => void copyPart('both')}>
-          Beides kopieren
-        </button>
+        {isGeneral ? (
+          <>
+            <button type="button" className="btn" onClick={() => void copyPart('prompt')}>
+              Prompt kopieren
+            </button>
+            <button type="button" className="btn" onClick={() => void copyPart('role')}>
+              Rolle kopieren
+            </button>
+            <button type="button" className="btn" onClick={() => void copyPart('usage')}>
+              Anwendung kopieren
+            </button>
+            <button type="button" className="btn" onClick={() => void copyPart('generalAll')}>
+              Alles kopieren
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="btn" onClick={() => void copyPart('style')}>
+              Style kopieren
+            </button>
+            <button type="button" className="btn" onClick={() => void copyPart('lyrics')}>
+              Lyrics kopieren
+            </button>
+            <button type="button" className="btn" onClick={() => void copyPart('both')}>
+              Beides kopieren
+            </button>
+          </>
+        )}
         {copyNote ? (
           <span className="copy-note" role="status">
             {copyNote}

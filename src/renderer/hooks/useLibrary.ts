@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getDesk } from '@renderer/api'
 import type { ListQuery, UpdateEntryPatch } from '@shared/deskApi'
-import type { Entry, LibraryFacet, SortMode } from '@shared/types'
+import type { Entry, EntryKind, KindFilter, LibraryFacet, SortMode } from '@shared/types'
 
 function collectTags(entries: Entry[]): string[] {
   const byKey = new Map<string, string>()
@@ -28,6 +28,7 @@ export function useLibrary() {
   const [query, setQuery] = useState<ListQuery>({
     search: '',
     facet: 'all',
+    kind: 'all',
     sort: 'newest',
   })
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export function useLibrary() {
     const desk = getDesk()
     const [listed, all] = await Promise.all([
       desk.entries.list(activeQuery),
-      desk.entries.list({ search: '', facet: 'all', sort: 'title' }),
+      desk.entries.list({ search: '', facet: 'all', kind: 'all', sort: 'title' }),
     ])
     if (id !== requestId.current) return
     setEntries(listed)
@@ -114,13 +115,16 @@ export function useLibrary() {
     }
   }, [])
 
-  const createNew = useCallback(() => {
-    return run(async () => {
-      const created = await getDesk().entries.create({})
-      await load(queryRef.current, created.id)
-      setSelectedId(created.id)
-    })
-  }, [load, run])
+  const createNew = useCallback(
+    (kind: EntryKind = 'suno') => {
+      return run(async () => {
+        const created = await getDesk().entries.create({ kind })
+        await load(queryRef.current, created.id)
+        setSelectedId(created.id)
+      })
+    },
+    [load, run],
+  )
 
   const importLibrary = useCallback(() => {
     return run(async () => {
@@ -208,6 +212,10 @@ export function useLibrary() {
     setFacet: (facet: LibraryFacet) => {
       setNotice(null)
       setQuery((current) => ({ ...current, facet }))
+    },
+    setKind: (kind: KindFilter) => {
+      setNotice(null)
+      setQuery((current) => ({ ...current, kind }))
     },
     setSort: (sort: SortMode) => {
       sortTouched.current = true

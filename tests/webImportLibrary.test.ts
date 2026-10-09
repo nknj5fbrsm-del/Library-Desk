@@ -30,7 +30,7 @@ describe('web importLibraryJson', () => {
     const db2 = await openDeskDb()
     const result = await importLibraryJson(db2, raw)
     expect(result.created).toBe(1)
-    const listed = await store.listEntries(db2, { search: '', facet: 'all', sort: 'title' })
+    const listed = await store.listEntries(db2, { search: '', facet: 'all', kind: 'all', sort: 'title' })
     expect(listed).toHaveLength(1)
     expect(listed[0]?.title).toBe('Export Me')
     db2.close()

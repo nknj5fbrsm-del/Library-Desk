@@ -3,7 +3,9 @@ import { getDesk } from '@renderer/api'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor'
 import { LibraryList } from '@renderer/components/LibraryList'
+import { NewKindDialog } from '@renderer/components/NewKindDialog'
 import { Toolbar } from '@renderer/components/Toolbar'
+import type { EntryKind } from '@shared/types'
 import { useCoverAmbienceLayers } from '@renderer/hooks/useCoverAmbience'
 import { useLibrary } from '@renderer/hooks/useLibrary'
 import { useIsMobile } from '@renderer/hooks/useMobileLayout'
@@ -55,22 +57,33 @@ export default function App(): JSX.Element {
   const splitRef = useRef<HTMLDivElement>(null)
   const listWidthRef = useRef(SPLIT_DEFAULT)
   const selectedIdRef = useRef(library.selectedId)
-  const createNewRef = useRef(library.createNew)
   const isMobileRef = useRef(isMobile)
   const wasMobileRef = useRef(isMobile)
   selectedIdRef.current = library.selectedId
-  createNewRef.current = library.createNew
   isMobileRef.current = isMobile
 
   const [listWidth, setListWidth] = useState(SPLIT_DEFAULT)
   const [dragging, setDragging] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null)
   const [mobilePane, setMobilePane] = useState<MobilePane>('list')
+  const [newKindOpen, setNewKindOpen] = useState(false)
   listWidthRef.current = listWidth
   const coverAmbience = useCoverAmbienceLayers(library.selectedEntry)
 
   const filtered =
-    library.query.search.trim().length > 0 || library.query.facet !== 'all'
+    library.query.search.trim().length > 0 ||
+    library.query.facet !== 'all' ||
+    library.query.kind !== 'all'
+
+  async function createOfKind(kind: EntryKind): Promise<void> {
+    try {
+      await editorRef.current?.flush()
+    } catch {
+      return
+    }
+    await library.createNew(kind)
+    if (isMobileRef.current) showDetailPane(true)
+  }
   const selectedVisible = library.entries.some((entry) => entry.id === library.selectedId)
 
   function showDetailPane(pushHistory: boolean): void {
@@ -174,15 +187,7 @@ export default function App(): JSX.Element {
 
       if (meta && key === 'n') {
         event.preventDefault()
-        void (async () => {
-          try {
-            await editorRef.current?.flush()
-          } catch {
-            return
-          }
-          await createNewRef.current()
-          if (isMobileRef.current) showDetailPane(true)
-        })()
+        setNewKindOpen(true)
         return
       }
 
@@ -283,6 +288,7 @@ export default function App(): JSX.Element {
       <Toolbar
         search={library.query.search}
         facet={library.query.facet}
+        kind={library.query.kind}
         sort={library.query.sort}
         tags={library.tags}
         notice={library.notice}
@@ -290,18 +296,9 @@ export default function App(): JSX.Element {
         searchRef={searchRef}
         onSearch={library.setSearch}
         onFacet={library.setFacet}
+        onKind={library.setKind}
         onSort={library.setSort}
-        onCreate={() => {
-          void (async () => {
-            try {
-              await editorRef.current?.flush()
-            } catch {
-              return
-            }
-            await library.createNew()
-            if (isMobileRef.current) showDetailPane(true)
-          })()
-        }}
+        onCreate={() => setNewKindOpen(true)}
         onImport={() => {
           void (async () => {
             try {
@@ -408,6 +405,15 @@ export default function App(): JSX.Element {
           )}
         </section>
       </div>
+      {newKindOpen ? (
+        <NewKindDialog
+          onPick={(kind) => {
+            setNewKindOpen(false)
+            void createOfKind(kind)
+          }}
+          onCancel={() => setNewKindOpen(false)}
+        />
+      ) : null}
       {pendingDelete ? (
         <ConfirmDialog
           message={
