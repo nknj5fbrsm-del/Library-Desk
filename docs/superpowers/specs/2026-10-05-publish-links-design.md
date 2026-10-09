@@ -1,7 +1,7 @@
 # Publish-Status & Publish-Links
 
 Datum: 2026-10-05  
-Projekt: suno-prompt-desk (Library Desk)
+Projekt: Library Desk (npm/`format`: `suno-prompt-desk`)
 
 ## Ziel
 

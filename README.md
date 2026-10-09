@@ -4,7 +4,9 @@ Lokale Suno-Prompt-Bibliothek als Electron-App.
 
 ## Workspace
 
-Diesen Ordner (`suno-prompt-desk`) als eigenen Workspace öffnen — nicht den Elternordner „Cursor Projekte“. Beim Öffnen startet `npm run dev` über die VS-Code-Aufgabe. Es öffnet sich ein Electron-Fenster (kein Browser-URL).
+Diesen Ordner (`Library Desk`) als eigenen Workspace öffnen — nicht den Elternordner „Cursor Projekte“. Beim Öffnen startet `npm run dev` über die VS-Code-Aufgabe. Es öffnet sich ein Electron-Fenster (kein Browser-URL).
+
+Technisch: npm-Paketname bleibt `suno-prompt-desk` (Electron-`userData` / SQLite-Pfad). GitHub: `Library-Desk`. Export-Format-ID bleibt `suno-prompt-desk`.
 
 ## Start
 

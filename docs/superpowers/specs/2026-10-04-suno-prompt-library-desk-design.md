@@ -3,8 +3,9 @@
 **Datum:** 2026-10-04  
 **Status:** Freigegeben — MVP umgesetzt (2026-10-04)  
 **Produktname:** Library Desk  
-**Repo-/Ordnername:** `suno-prompt-desk`  
-**Pfad:** `~/Desktop/Cursor Projekte/suno-prompt-desk`
+**Produkt-/Ordnername:** Library Desk  
+**npm-/Export-ID:** `suno-prompt-desk` (unverändert für Datenkompatibilität)  
+**Pfad:** `~/Desktop/Cursor Projekte/Library Desk`
 
 ## 1. Ziel
 
@@ -271,7 +272,7 @@ IPC-Oberfläche schmal und typisiert (z. B. `entries.list/get/create/update/dele
 
 ## 10. Dev-Start & Workspace
 
-- Workspace = **nur** `suno-prompt-desk` (nicht Elternordner „Cursor Projekte“).
+- Workspace = **nur** `Library Desk` (nicht Elternordner „Cursor Projekte“).
 - Dev-Befehl (nach Scaffold): typisch `npm run dev` (Vite + Electron).
 - Preview: Electron-Fenster (kein Browser-URL als Primärziel).
 - Auto-Start-Task analog anderer Desktop-Projekte dokumentieren (`.vscode/tasks.json` mit `runOn: folderOpen`).

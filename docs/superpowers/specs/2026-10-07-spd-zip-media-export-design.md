@@ -2,7 +2,7 @@
 
 **Datum:** 2026-10-07  
 **Status:** Freigegeben / umgesetzt  
-**Repo:** `suno-prompt-desk`
+**Ordner:** `Library Desk` · **GitHub:** `Library-Desk`
 
 ## 1. Ziel
 

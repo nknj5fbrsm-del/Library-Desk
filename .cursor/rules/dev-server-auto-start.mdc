@@ -11,4 +11,4 @@ Beim Öffnen dieses Workspaces startet der Electron-Dev-Server automatisch.
 |---------|--------|---------|
 | Library Desk | `npm run dev` | Electron-Fenster (kein Browser-URL) |
 
-Workspace nur als Ordner `suno-prompt-desk` öffnen (nicht den Elternordner „Cursor Projekte“).
+Workspace nur als Ordner `Library Desk` öffnen (nicht den Elternordner „Cursor Projekte“).

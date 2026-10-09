@@ -3,7 +3,7 @@
 **Datum:** 2026-10-07  
 **Status:** Freigegeben / umgesetzt  
 **Produktname:** Library Desk (Web)  
-**Repo:** `suno-prompt-desk`
+**Ordner:** `Library Desk` · **GitHub:** `Library-Desk`
 
 ## 1. Ziel
 
