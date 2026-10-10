@@ -37,7 +37,9 @@ Browser-Version derselben UI (IndexedDB, ohne Login):
 
 ## Build / Installer
 
-- **Mac (lokal auf diesem Mac):** `npm run dist:mac` → `release/*.dmg`
+- **Alles (Web + Mac-DMG + Tests):** `npm run release:all` → `dist-web/` + `release/*.dmg` — nach Features immer dieses Kommando, nicht nur DMG.
+- **Mac allein:** `npm run dist:mac` → `release/*.dmg`
+- **Web allein:** `npm run build:web` → `dist-web/`
 - **Windows:** Auf einer **Windows-Maschine oder in CI** bauen: `npm run dist:win` → `release/*.exe` (NSIS, Zielarchitektur **x64**). `better-sqlite3` ist nativ — ein von macOS erzeugter Windows-Installer ist **nicht lauffähig** und wird nicht als Deliverable unterstützt.
 
 ## Tests
@@ -51,6 +53,8 @@ Vitest läuft unter Electron (`ELECTRON_RUN_AS_NODE=1`), damit `better-sqlite3` 
 ## Export / Import
 
 **Bibliothek sichern** / Eintrag-**Export** schreiben eine `.spd.zip` (eine Datei, inkl. lokaler Audio- und Cover-Dateien). Import akzeptiert `.spd.zip` sowie weiterhin `.spd.json` / Mastermind-JSON. URL-Audio bleibt in der JSON-Metadaten-Datei im Zip.
+
+**Auto-Backup (nur Desktop):** Toolbar → **Auto-Backup**. Täglich stilles Voll-Backup als `.spd.zip` (Default 03:00, Ordner `~/Documents/Library Desk Backups`, 14 Dateien behalten). App muss laufen; verpasste Slots werden beim Start nachgeholt. Web: nur manueller Export.
 
 Import akzeptiert:
 - Desk-Bundle (`format: "suno-prompt-desk"`)

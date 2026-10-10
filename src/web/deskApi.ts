@@ -1,3 +1,8 @@
+import {
+  AUTO_BACKUP_DEFAULT_RETAIN,
+  AUTO_BACKUP_DEFAULT_TIME_MINUTES,
+  type AutoBackupSettings,
+} from '../shared/autoBackup'
 import { entryExportFilename } from '../shared/exportFormat'
 import { canOpenInBrowser, mimeFromFilename } from '../shared/mime'
 import { looksLikeZip } from '../shared/spdZip'
@@ -293,6 +298,27 @@ export async function createWebDeskApi(): Promise<DeskApi> {
         const raw = JSON.parse(new TextDecoder().decode(buffer)) as unknown
         return importLibraryJson(db, raw)
       },
+    },
+    autoBackup: {
+      isAvailable: async () => false,
+      getSettings: async (): Promise<AutoBackupSettings> => ({
+        enabled: false,
+        timeMinutes: AUTO_BACKUP_DEFAULT_TIME_MINUTES,
+        folderPath: '',
+        retainCount: AUTO_BACKUP_DEFAULT_RETAIN,
+        lastSuccessAt: null,
+        lastError: null,
+        lastAttemptAt: null,
+      }),
+      setSettings: async () => {
+        throw new Error('Automatisches Backup nur in der Desktop-App')
+      },
+      pickFolder: async () => null,
+      runNow: async () => ({
+        ok: false,
+        error: 'Automatisches Backup nur in der Desktop-App',
+      }),
+      onNotice: () => () => undefined,
     },
     settings: {
       get: (key) => settings.getSetting(db, key),

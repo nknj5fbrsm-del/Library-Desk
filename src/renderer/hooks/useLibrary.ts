@@ -233,6 +233,7 @@ export function useLibrary() {
     busy,
     error,
     notice,
+    showNotice: setNotice,
     editorRevision,
     reload,
     createNew,

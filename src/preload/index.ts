@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { Entry } from '../shared/types'
+import type { AutoBackupSettingsPatch } from '../shared/autoBackup'
 import type { CreateEntryInput, DeskApi, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
 
 const desk: DeskApi = {
@@ -38,6 +39,23 @@ const desk: DeskApi = {
     exportLibrary: () => ipcRenderer.invoke('io:exportLibrary'),
     exportEntry: (id: string) => ipcRenderer.invoke('io:exportEntry', id),
     importLibrary: () => ipcRenderer.invoke('io:importLibrary'),
+  },
+  autoBackup: {
+    isAvailable: () => ipcRenderer.invoke('autoBackup:isAvailable'),
+    getSettings: () => ipcRenderer.invoke('autoBackup:getSettings'),
+    setSettings: (patch: AutoBackupSettingsPatch) =>
+      ipcRenderer.invoke('autoBackup:setSettings', patch),
+    pickFolder: () => ipcRenderer.invoke('autoBackup:pickFolder'),
+    runNow: () => ipcRenderer.invoke('autoBackup:runNow'),
+    onNotice: (handler) => {
+      const listener = (_event: unknown, payload: { ok: boolean; message: string }): void => {
+        handler(payload)
+      }
+      ipcRenderer.on('autoBackup:notice', listener)
+      return () => {
+        ipcRenderer.removeListener('autoBackup:notice', listener)
+      }
+    },
   },
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', key),

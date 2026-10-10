@@ -40,6 +40,13 @@ import {
 import { importLibraryJson } from './importExport'
 import { getSetting, setSetting } from './settingsRepo'
 import { buildSpdZipBuffer, importSpdZipBuffer } from './spdBundle'
+import {
+  getAutoBackupSettings,
+  pickAutoBackupFolder,
+  runAutoBackup,
+  updateAutoBackupSettings,
+} from './autoBackupService'
+import type { AutoBackupSettingsPatch } from '../shared/autoBackup'
 
 const EXPORT_ZIP_FILTERS = [
   { name: 'Library Desk Zip', extensions: ['spd.zip', 'zip'] },
@@ -344,5 +351,12 @@ export function registerIpc(db: AppDatabase, userData: string): void {
   ipcMain.handle('settings:set', (_event, key: string, value: string) => {
     setSetting(db, key, value)
   })
+  ipcMain.handle('autoBackup:isAvailable', () => true)
+  ipcMain.handle('autoBackup:getSettings', () => getAutoBackupSettings())
+  ipcMain.handle('autoBackup:setSettings', (_event, patch: AutoBackupSettingsPatch) =>
+    updateAutoBackupSettings(patch),
+  )
+  ipcMain.handle('autoBackup:pickFolder', () => pickAutoBackupFolder())
+  ipcMain.handle('autoBackup:runNow', () => runAutoBackup())
   ipcMain.handle('shell:openExternal', (_event, url: string) => shell.openExternal(assertHttpUrl(url)))
 }

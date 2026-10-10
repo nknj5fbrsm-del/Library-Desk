@@ -15,7 +15,8 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dev:web": "vite --config vite.config.web.ts",
-    "build:web": "vite build --config vite.config.web.ts && mv dist-web/index.web.html dist-web/index.html"
+    "build:web": "vite build --config vite.config.web.ts && mv dist-web/index.web.html dist-web/index.html",
+    "release:all": "npm test && npm run build:web && npm run dist:mac"
   },
   "dependencies": {
     "better-sqlite3": "^11.7.0",

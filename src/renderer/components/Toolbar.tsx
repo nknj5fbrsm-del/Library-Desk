@@ -16,6 +16,7 @@ interface ToolbarProps {
   onCreate: () => void
   onImport: () => void
   onExport: () => void
+  onAutoBackup?: () => void
   searchRef: RefObject<HTMLInputElement>
 }
 
@@ -34,6 +35,7 @@ export function Toolbar({
   onCreate,
   onImport,
   onExport,
+  onAutoBackup,
   searchRef,
 }: ToolbarProps): JSX.Element {
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -133,6 +135,16 @@ export function Toolbar({
           <button type="button" className="btn toolbar-extra-action" disabled={busy} onClick={onExport}>
             Bibliothek sichern
           </button>
+          {onAutoBackup ? (
+            <button
+              type="button"
+              className="btn toolbar-extra-action"
+              disabled={busy}
+              onClick={onAutoBackup}
+            >
+              Auto-Backup
+            </button>
+          ) : null}
         </div>
       </div>
       {notice ? (

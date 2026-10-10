@@ -822,6 +822,62 @@ select,
   font-size: 15px;
 }
 
+.dialog-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.dialog-hint {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.auto-backup-dialog {
+  width: min(480px, calc(100% - 32px));
+}
+
+.auto-backup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auto-backup-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.auto-backup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.auto-backup-field input[type='time'],
+.auto-backup-field input[type='number'] {
+  width: 100%;
+  max-width: 160px;
+}
+
+.auto-backup-path {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+  color: var(--text-muted);
+}
+
+.auto-backup-status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

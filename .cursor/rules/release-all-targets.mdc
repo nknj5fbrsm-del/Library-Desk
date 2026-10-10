@@ -1,0 +1,17 @@
+---
+description: Bei Release/Neubau immer Web, Desktop und DMG gemeinsam aktualisieren
+alwaysApply: true
+---
+
+# Release: alle Targets mitbauen
+
+Wenn der Nutzer „bauen“, „neu bauen“, „Release“, „DMG“, „Installer“ oder „deployen“ meint — oder nach Features, die Mac **oder** Web betreffen, ein auslieferbares Artefakt erwartet:
+
+1. **Immer alle drei** aktualisieren — nie nur DMG oder nur Web:
+   - Tests: `npm test`
+   - Web / Smartphone: `npm run build:web` → `dist-web/` (Vercel deployt von `main` nach Push)
+   - Desktop + DMG: `npm run dist:mac` → `release/Library Desk-*-arm64.dmg`
+2. Bevorzugt ein Kommando: `npm run release:all` (= test + build:web + dist:mac).
+3. Danach kurz bestätigen: Web-Output (`dist-web/`), DMG-Pfad + Zeitstempel, Hinweis altes Image auswerfen.
+4. **Push / Vercel** nur auf explizite Nutzerbitte; lokal muss `dist-web` trotzdem mitgebaut sein.
+5. Altes DMG gilt als veraltet, sobald Shared/UI/Main geändert wurde — nicht „nur Dev reicht“.

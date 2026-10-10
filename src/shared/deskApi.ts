@@ -11,6 +11,7 @@ import type {
   StarRating,
 } from './types'
 import type { ImportLibraryResult } from './types'
+import type { AutoBackupSettings, AutoBackupSettingsPatch } from './autoBackup'
 
 export interface CreateEntryInput {
   kind?: EntryKind
@@ -71,6 +72,15 @@ export interface DeskApi {
     exportLibrary(): Promise<{ filePath: string } | null>
     exportEntry(id: string): Promise<{ filePath: string } | null>
     importLibrary(): Promise<ImportLibraryResult | null>
+  }
+  autoBackup: {
+    /** false auf Web — UI ausblenden */
+    isAvailable(): Promise<boolean>
+    getSettings(): Promise<AutoBackupSettings>
+    setSettings(patch: AutoBackupSettingsPatch): Promise<AutoBackupSettings>
+    pickFolder(): Promise<string | null>
+    runNow(): Promise<{ ok: boolean; filePath?: string; error?: string }>
+    onNotice(handler: (payload: { ok: boolean; message: string }) => void): () => void
   }
   settings: {
     get(key: string): Promise<string | null>

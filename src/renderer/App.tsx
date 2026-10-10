@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { getDesk } from '@renderer/api'
+import { AutoBackupDialog } from '@renderer/components/AutoBackupDialog'
 import { ConfirmDialog } from '@renderer/components/ConfirmDialog'
 import { EntryEditor, type EditorHandle } from '@renderer/components/EntryEditor'
 import { LibraryList } from '@renderer/components/LibraryList'
@@ -67,6 +68,8 @@ export default function App(): JSX.Element {
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null)
   const [mobilePane, setMobilePane] = useState<MobilePane>('list')
   const [newKindOpen, setNewKindOpen] = useState(false)
+  const [autoBackupOpen, setAutoBackupOpen] = useState(false)
+  const [autoBackupAvailable, setAutoBackupAvailable] = useState(false)
   listWidthRef.current = listWidth
   const coverAmbience = useCoverAmbienceLayers(library.selectedEntry)
 
@@ -104,6 +107,27 @@ export default function App(): JSX.Element {
   useEffect(() => {
     void hydrateVolume()
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const available = await getDesk().autoBackup.isAvailable()
+        if (!cancelled) setAutoBackupAvailable(available)
+      } catch {
+        if (!cancelled) setAutoBackupAvailable(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    return getDesk().autoBackup.onNotice((payload) => {
+      library.showNotice(payload.message)
+    })
+  }, [library.showNotice])
 
   useEffect(() => {
     let cancelled = false
@@ -319,7 +343,14 @@ export default function App(): JSX.Element {
             await library.exportLibrary()
           })()
         }}
+        onAutoBackup={autoBackupAvailable ? () => setAutoBackupOpen(true) : undefined}
       />
+      {autoBackupOpen ? (
+        <AutoBackupDialog
+          onClose={() => setAutoBackupOpen(false)}
+          onNotice={(message) => library.showNotice(message)}
+        />
+      ) : null}
       <div
         className="split"
         ref={splitRef}
