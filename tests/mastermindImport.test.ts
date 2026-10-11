@@ -45,6 +45,20 @@ describe('mapMastermindItem', () => {
     )
     expect(mapMastermindItem({ lyrics: 'a' }).skipReason).toBe('keine id')
   })
+
+  it('prefers coverUrl over coverThumbUrl', () => {
+    const full =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mP8z8BQz0AEYBxVSF+FBwAEgAHh8S4H9QAAAABJRU5ErkJggg=='
+    const thumb = TINY_PNG
+    const mapped = mapMastermindItem({
+      id: 'cover-pref',
+      lyrics: 'x',
+      styleData: { prompt: 'y' },
+      coverUrl: full,
+      coverThumbUrl: thumb,
+    })
+    expect(mapped.coverDataUrl).toBe(full)
+  })
 })
 
 describe('importLibraryJson mastermind', () => {

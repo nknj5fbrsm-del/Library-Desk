@@ -107,7 +107,7 @@ export function mapMastermindItem(raw: unknown): MastermindMapResult {
 
   const groupId = asString(raw.versionGroupId).trim() || id
 
-  const coverDataUrl = pickDataUrl(asString(raw.coverThumbUrl), asString(raw.coverUrl))
+  const coverDataUrl = pickDataUrl(asString(raw.coverUrl), asString(raw.coverThumbUrl))
 
   let rating: StarRating = 0
   if (typeof raw.rating === 'number') {
