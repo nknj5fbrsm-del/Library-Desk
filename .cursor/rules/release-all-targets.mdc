@@ -7,11 +7,12 @@ alwaysApply: true
 
 Wenn der Nutzer „bauen“, „neu bauen“, „Release“, „DMG“, „Installer“ oder „deployen“ meint — oder nach Features, die Mac **oder** Web betreffen, ein auslieferbares Artefakt erwartet:
 
-1. **Immer alle drei** aktualisieren — nie nur DMG oder nur Web:
+1. **Immer alle Targets + GitHub-DMG** aktualisieren — nie nur lokal DMG oder nur Web:
    - Tests: `npm test`
    - Web / Smartphone: `npm run build:web` → `dist-web/` (Vercel deployt von `main` nach Push)
    - Desktop + DMG: `npm run dist:mac` → `release/Library Desk-*-arm64.dmg`
-2. Bevorzugt ein Kommando: `npm run release:all` (= test + build:web + dist:mac).
-3. Danach kurz bestätigen: Web-Output (`dist-web/`), DMG-Pfad + Zeitstempel, Hinweis altes Image auswerfen.
-4. **Push / Vercel** nur auf explizite Nutzerbitte; lokal muss `dist-web` trotzdem mitgebaut sein.
+   - **GitHub Release:** `npm run release:dmg-github` → Asset am Tag `v{version}` ersetzen (`--clobber`). DMG **nicht** ins Git committen (`release/` ist gitignored).
+2. Bevorzugt ein Kommando: `npm run release:all` (= test + build:web + dist:mac + GitHub-DMG-Upload).
+3. Danach kurz bestätigen: Web-Output, lokaler DMG-Pfad + Zeitstempel, Release-URL; Hinweis altes Image auswerfen.
+4. **Code-Push** nur auf explizite Nutzerbitte; DMG-Upload auf GitHub Releases gehört zum Neubau (nicht zum Git-Commit).
 5. Altes DMG gilt als veraltet, sobald Shared/UI/Main geändert wurde — nicht „nur Dev reicht“.

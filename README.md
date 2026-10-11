@@ -37,7 +37,8 @@ Browser-Version derselben UI (IndexedDB, ohne Login):
 
 ## Build / Installer
 
-- **Alles (Web + Mac-DMG + Tests):** `npm run release:all` → `dist-web/` + `release/*.dmg` — nach Features immer dieses Kommando, nicht nur DMG.
+- **Alles (Web + Mac-DMG + Tests + GitHub-Image):** `npm run release:all` → `dist-web/` + `release/*.dmg` + Upload auf [GitHub Releases](https://github.com/nknj5fbrsm-del/Library-Desk/releases) (Tag `v0.1.0`, Asset wird ersetzt). DMG nicht ins Git.
+- **Nur DMG auf GitHub aktualisieren:** `npm run release:dmg-github` (nach `dist:mac`)
 - **Mac allein:** `npm run dist:mac` → `release/*.dmg`
 - **Web allein:** `npm run build:web` → `dist-web/`
 - **Windows:** Auf einer **Windows-Maschine oder in CI** bauen: `npm run dist:win` → `release/*.exe` (NSIS, Zielarchitektur **x64**). `better-sqlite3` ist nativ — ein von macOS erzeugter Windows-Installer ist **nicht lauffähig** und wird nicht als Deliverable unterstützt.

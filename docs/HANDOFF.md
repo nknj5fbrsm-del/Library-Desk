@@ -15,7 +15,7 @@
 2. Dev: `npm run dev` → Electron-Fenster (Auto-Start via `.vscode/tasks.json`).
 3. Web: `npm run dev:web` → http://localhost:5174/index.web.html
 4. Vor Code-Änderungen: `git status` · nach Shared/DB: `npm test`
-5. **Release / Neubau (Pflicht alle Targets):** `npm run release:all` → Tests + Web (`dist-web/`) + Mac-DMG (`release/*.dmg`). Nie nur DMG oder nur Web.
+5. **Release / Neubau (Pflicht alle Targets):** `npm run release:all` → Tests + Web (`dist-web/`) + Mac-DMG lokal + **GitHub Release** (DMG-Asset am Tag `v{version}`). Nie nur lokal; DMG nicht ins Git.
 
 ## Was das Projekt ist
 
@@ -78,7 +78,7 @@ src/web/*        ← nur Web (DeskApi IndexedDB, Zip, Bootstrap)
 - **Commits nur auf explizite Bitte** — nicht von allein pushen
 - Workspace = `Library Desk`; alte Pfade `suno-prompt-desk` nur noch historisch/npm
 - Nicht nutzen: leerer Ordner „Suno Prompt Library“ o.ä. Chat-Reste
-- **Neubau/Release:** immer Web + Desktop + DMG (`npm run release:all` / Rule `release-all-targets`)
+- **Neubau/Release:** immer Web + Desktop + DMG + GitHub-Release-Asset (`npm run release:all` / Rule `release-all-targets`)
 
 ## Bekannte Fallstricke
 
