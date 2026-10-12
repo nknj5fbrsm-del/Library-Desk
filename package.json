@@ -20,6 +20,7 @@
     "release:all": "npm test && npm run build:web && npm run dist:mac && npm run release:dmg-github"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "better-sqlite3": "^11.7.0",
     "jszip": "^3.10.2",
     "react": "^18.3.1",
