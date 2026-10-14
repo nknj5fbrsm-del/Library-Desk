@@ -31,3 +31,10 @@ describe('isEmptyTitle', () => {
     expect(isEmptyTitle('Song')).toBe(false)
   })
 })
+
+describe('normalizeTitle vs live editor draft', () => {
+  it('trims trailing spaces that autosave must not write back into the input', () => {
+    expect(normalizeTitle('Zwei Worte ')).toBe('Zwei Worte')
+    expect(titleForEditor(normalizeTitle('Zwei Worte '))).toBe('Zwei Worte')
+  })
+})

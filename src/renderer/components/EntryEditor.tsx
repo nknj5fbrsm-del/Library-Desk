@@ -571,16 +571,12 @@ export const EntryEditor = forwardRef<EditorHandle, EntryEditorProps>(function E
     if (mountedRef.current) setSaveState('saving')
     savingRef.current = true
     try {
-      const saved = await onUpdateRef.current(id, patch)
+      await onUpdateRef.current(id, patch)
       if (!mountedRef.current || entryIdRef.current !== id) return
-      // Adopt trim/normalization into the field, but never replace an empty
-      // draft with the persisted "Ohne Titel" sentinel (placeholder handles that).
-      const editorTitle = titleForEditor(saved.title)
-      if (draftRef.current.title === sent.title && editorTitle !== sent.title) {
-        const next = { ...draftRef.current, title: editorTitle }
-        draftRef.current = next
-        setDraft(next)
-      }
+      // Do not write the trimmed/normalized title back into the draft.
+      // Autosave + normalizeTitle() would eat the trailing space between words
+      // while the user is still typing ("Foo " → "Foo"). Placeholder handles
+      // the empty/"Ohne Titel" case via titleForEditor on entry load.
       setSaveState(dirtyRef.current ? 'pending' : 'saved')
     } catch (cause) {
       dirtyRef.current = true
