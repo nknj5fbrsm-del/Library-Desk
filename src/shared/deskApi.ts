@@ -70,7 +70,10 @@ export interface DeskApi {
   }
   io: {
     exportLibrary(): Promise<{ filePath: string } | null>
+    /** Single entry including all versions in its group. */
     exportEntry(id: string): Promise<{ filePath: string } | null>
+    /** One or more seed ids; expands each to its full version group. */
+    exportEntries(ids: string[]): Promise<{ filePath: string } | null>
     importLibrary(): Promise<ImportLibraryResult | null>
   }
   autoBackup: {

@@ -3,6 +3,7 @@ import {
   AUTO_BACKUP_DEFAULT_TIME_MINUTES,
   type AutoBackupSettings,
 } from '../shared/autoBackup'
+import { collectEntriesForExport } from '../shared/exportGroup'
 import { entryExportFilename } from '../shared/exportFormat'
 import { canOpenInBrowser, mimeFromFilename } from '../shared/mime'
 import { looksLikeZip } from '../shared/spdZip'
@@ -282,8 +283,35 @@ export async function createWebDeskApi(): Promise<DeskApi> {
       exportEntry: async (id) => {
         const entry = await entries.getEntry(db, id)
         if (!entry) throw new Error(`Entry not found: ${id}`)
+        const catalog = await entries.listEntries(db, {
+          search: '',
+          facet: 'all',
+          kind: 'all',
+          sort: 'newest',
+        })
+        const bundle = collectEntriesForExport(catalog, [id])
         const name = entryExportFilename(entry)
-        const zip = await buildWebSpdZip(db, [entry])
+        const zip = await buildWebSpdZip(db, bundle)
+        downloadBlob(name, new Blob([zip], { type: 'application/zip' }))
+        return { filePath: name }
+      },
+      exportEntries: async (ids) => {
+        const list = ids.filter((id) => typeof id === 'string' && id.length > 0)
+        if (list.length === 0) throw new Error('Keine Einträge zum Export')
+        const catalog = await entries.listEntries(db, {
+          search: '',
+          facet: 'all',
+          kind: 'all',
+          sort: 'newest',
+        })
+        const bundle = collectEntriesForExport(catalog, list)
+        if (bundle.length === 0) throw new Error('Keine Einträge zum Export')
+        const first = await entries.getEntry(db, list[0]!)
+        const name =
+          list.length === 1 && first
+            ? entryExportFilename(first)
+            : `auswahl-${new Date().toISOString().slice(0, 10)}.spd.zip`
+        const zip = await buildWebSpdZip(db, bundle)
         downloadBlob(name, new Blob([zip], { type: 'application/zip' }))
         return { filePath: name }
       },

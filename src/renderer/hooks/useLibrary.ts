@@ -154,6 +154,24 @@ export function useLibrary() {
     })
   }, [run])
 
+  const exportEntries = useCallback((ids: string[]) => {
+    return run(async () => {
+      const result = await getDesk().io.exportEntries(ids)
+      if (!result) return
+      setNotice(ids.length === 1 ? 'Eintrag exportiert.' : 'Auswahl exportiert.')
+    })
+  }, [run])
+
+  const deleteEntries = useCallback((ids: string[]) => {
+    return run(async () => {
+      for (const id of ids) {
+        await getDesk().entries.delete(id)
+      }
+      await load(queryRef.current)
+      setNotice(ids.length === 1 ? 'Eintrag gelöscht.' : `${ids.length} Einträge gelöscht.`)
+    })
+  }, [load, run])
+
   const updateEntry = useCallback(async (id: string, patch: UpdateEntryPatch): Promise<Entry> => {
     try {
       const saved = await getDesk().entries.update(id, patch)
@@ -240,10 +258,12 @@ export function useLibrary() {
     importLibrary,
     exportLibrary,
     exportEntry,
+    exportEntries,
     updateEntry,
     duplicateEntry,
     createVersion,
     deleteEntry,
+    deleteEntries,
     syncEntry,
   }
 }

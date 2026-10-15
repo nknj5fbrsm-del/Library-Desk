@@ -66,6 +66,9 @@ export default function App(): JSX.Element {
   const [listWidth, setListWidth] = useState(SPLIT_DEFAULT)
   const [dragging, setDragging] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Entry | null>(null)
+  const [pendingBulkDeleteIds, setPendingBulkDeleteIds] = useState<string[] | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(() => new Set())
   const [mobilePane, setMobilePane] = useState<MobilePane>('list')
   const [newKindOpen, setNewKindOpen] = useState(false)
   const [autoBackupOpen, setAutoBackupOpen] = useState(false)
@@ -322,7 +325,6 @@ export default function App(): JSX.Element {
         onFacet={library.setFacet}
         onKind={library.setKind}
         onSort={library.setSort}
-        onCreate={() => setNewKindOpen(true)}
         onImport={() => {
           void (async () => {
             try {
@@ -360,19 +362,130 @@ export default function App(): JSX.Element {
             : { gridTemplateColumns: `${listWidth}px 6px minmax(0, 1fr)` }
         }
       >
-        <LibraryList
-          entries={library.entries}
-          selectedId={library.selectedId}
-          loading={library.loading}
-          error={library.error}
-          filtered={filtered}
-          busy={library.busy}
-          onSelect={(id) => {
-            library.select(id)
-            if (isMobileRef.current) showDetailPane(true)
-          }}
-          onDelete={(entry) => setPendingDelete(entry)}
-        />
+        <div className="library-pane">
+          <div className="library-pane-actions">
+            {selecting ? (
+              <>
+                <span className="library-selection-count" role="status">
+                  {selectedGroupIds.size} ausgewählt
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={library.busy || selectedGroupIds.size === 0}
+                  onClick={() => {
+                    const ids = library.catalog
+                      .filter((entry) => selectedGroupIds.has(entry.groupId))
+                      .map((entry) => entry.id)
+                    if (ids.length === 0) return
+                    void (async () => {
+                      try {
+                        await editorRef.current?.flush()
+                      } catch {
+                        return
+                      }
+                      await library.exportEntries(ids)
+                      setSelecting(false)
+                      setSelectedGroupIds(new Set())
+                    })()
+                  }}
+                >
+                  Export
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={library.busy || selectedGroupIds.size === 0}
+                  onClick={() => {
+                    const ids = library.catalog
+                      .filter((entry) => selectedGroupIds.has(entry.groupId))
+                      .map((entry) => entry.id)
+                    if (ids.length === 0) return
+                    setPendingBulkDeleteIds(ids)
+                  }}
+                >
+                  Löschen
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={library.busy}
+                  onClick={() => {
+                    setSelecting(false)
+                    setSelectedGroupIds(new Set())
+                  }}
+                >
+                  Abbrechen
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={library.busy}
+                  onClick={() => setNewKindOpen(true)}
+                >
+                  Neu
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={library.busy}
+                  onClick={() => {
+                    setSelecting(true)
+                    setSelectedGroupIds(new Set())
+                  }}
+                >
+                  Auswählen
+                </button>
+              </>
+            )}
+          </div>
+          <LibraryList
+            entries={library.entries}
+            selectedId={library.selectedId}
+            loading={library.loading}
+            error={library.error}
+            filtered={filtered}
+            busy={library.busy}
+            selecting={selecting}
+            selectedGroupIds={selectedGroupIds}
+            onSelect={(id) => {
+              library.select(id)
+              if (isMobileRef.current) showDetailPane(true)
+            }}
+            onToggleGroup={(groupId) => {
+              setSelectedGroupIds((current) => {
+                const next = new Set(current)
+                if (next.has(groupId)) next.delete(groupId)
+                else next.add(groupId)
+                return next
+              })
+            }}
+            onDelete={(entry) => setPendingDelete(entry)}
+            onDuplicate={(id) => {
+              void (async () => {
+                try {
+                  await editorRef.current?.flush()
+                } catch {
+                  return
+                }
+                await library.duplicateEntry(id)
+              })()
+            }}
+            onExportEntry={(id) => {
+              void (async () => {
+                try {
+                  await editorRef.current?.flush()
+                } catch {
+                  return
+                }
+                await library.exportEntry(id)
+              })()
+            }}
+          />
+        </div>
         <div
           className="split-resizer"
           role="separator"
@@ -472,6 +585,34 @@ export default function App(): JSX.Element {
             })()
           }}
           onCancel={() => setPendingDelete(null)}
+        />
+      ) : null}
+      {pendingBulkDeleteIds ? (
+        <ConfirmDialog
+          message={
+            selectedGroupIds.size === 1
+              ? 'Ausgewählten Eintrag (inkl. aller Versionen) wirklich löschen?'
+              : `${selectedGroupIds.size} Einträge (inkl. aller Versionen) wirklich löschen?`
+          }
+          confirmLabel="Löschen"
+          cancelLabel="Abbrechen"
+          danger
+          onConfirm={() => {
+            const ids = pendingBulkDeleteIds
+            setPendingBulkDeleteIds(null)
+            void (async () => {
+              try {
+                await editorRef.current?.flush()
+              } catch {
+                return
+              }
+              await library.deleteEntries(ids)
+              setSelecting(false)
+              setSelectedGroupIds(new Set())
+              if (isMobileRef.current) showListPane(false)
+            })()
+          }}
+          onCancel={() => setPendingBulkDeleteIds(null)}
         />
       ) : null}
     </div>

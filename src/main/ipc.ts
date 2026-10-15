@@ -2,6 +2,7 @@ import { copyFileSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import type { AudioRef } from '../shared/types'
+import { collectEntriesForExport } from '../shared/exportGroup'
 import { entryExportFilename } from '../shared/exportFormat'
 import { looksLikeZip } from '../shared/spdZip'
 import type { CreateEntryInput, ListQuery, UpdateEntryPatch } from '../shared/deskApi'
@@ -316,18 +317,36 @@ export function registerIpc(db: AppDatabase, userData: string): void {
     return { filePath: picked.filePath }
   })
 
-  ipcMain.handle('io:exportEntry', async (_event, id: string) => {
-    const entry = getEntry(db, id)
-    if (!entry) throw new Error(`Entry not found: ${id}`)
+  async function exportSeedIds(ids: string[], dialogTitle: string, defaultPath: string) {
+    const catalog = listEntries(db, { search: '', facet: 'all', kind: 'all', sort: 'newest' })
+    const bundle = collectEntriesForExport(catalog, ids)
+    if (bundle.length === 0) throw new Error('Keine Einträge zum Export')
     const picked = await saveFile({
-      title: 'Eintrag exportieren',
-      defaultPath: entryExportFilename(entry),
+      title: dialogTitle,
+      defaultPath,
       filters: EXPORT_ZIP_FILTERS,
     })
     if (picked.canceled || !picked.filePath) return null
-    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, attachmentsRoot, [entry])
+    const zip = await buildSpdZipBuffer(userData, audioRoot, coverRoot, attachmentsRoot, bundle)
     writeFileSync(picked.filePath, Buffer.from(zip))
     return { filePath: picked.filePath }
+  }
+
+  ipcMain.handle('io:exportEntry', async (_event, id: string) => {
+    const entry = getEntry(db, id)
+    if (!entry) throw new Error(`Entry not found: ${id}`)
+    return exportSeedIds([id], 'Eintrag exportieren', entryExportFilename(entry))
+  })
+
+  ipcMain.handle('io:exportEntries', async (_event, ids: string[]) => {
+    const list = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : []
+    if (list.length === 0) throw new Error('Keine Einträge zum Export')
+    const first = getEntry(db, list[0]!)
+    const defaultPath =
+      list.length === 1 && first
+        ? entryExportFilename(first)
+        : `auswahl-${new Date().toISOString().slice(0, 10)}.spd.zip`
+    return exportSeedIds(list, 'Auswahl exportieren', defaultPath)
   })
 
   ipcMain.handle('io:importLibrary', async () => {

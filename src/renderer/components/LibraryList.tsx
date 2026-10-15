@@ -1,7 +1,17 @@
+import {
+  formatCopyBoth,
+  formatCopyGeneralAll,
+  formatCopyLyrics,
+  formatCopyPromptBody,
+  formatCopyStyle,
+  formatCopySystemRole,
+  formatCopyUsageGuide,
+} from '@shared/copyFormat'
 import { kindLabel } from '@shared/entryKind'
 import { groupEntriesForDisplay } from '@shared/versionGroups'
 import type { Entry } from '@shared/types'
 import { CoverThumb } from '@renderer/components/CoverThumb'
+import { OverflowMenu, type OverflowMenuItem } from '@renderer/components/OverflowMenu'
 import { StarRatingDisplay } from '@renderer/components/StarRating'
 
 interface LibraryListProps {
@@ -11,8 +21,13 @@ interface LibraryListProps {
   error: string | null
   filtered: boolean
   busy?: boolean
+  selecting?: boolean
+  selectedGroupIds?: ReadonlySet<string>
   onSelect: (id: string) => void
+  onToggleGroup?: (groupId: string) => void
   onDelete: (entry: Entry) => void
+  onDuplicate: (id: string) => void
+  onExportEntry: (id: string) => void
 }
 
 function AudioIcon(): JSX.Element {
@@ -26,15 +41,93 @@ function AudioIcon(): JSX.Element {
   )
 }
 
-function TrashIcon(): JSX.Element {
-  return (
-    <svg className="group-delete-icon" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M6.25 2a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5h-3.5zM3 4.25h10a.75.75 0 0 1 0 1.5h-.4l-.45 7.05A1.75 1.75 0 0 1 10.41 14.5H5.59a1.75 1.75 0 0 1-1.74-1.7L3.4 5.75H3a.75.75 0 0 1 0-1.5zm2.16 1.5.43 6.75h4.82l.43-6.75H5.16z"
-      />
-    </svg>
-  )
+async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text)
+}
+
+function menuItemsFor(
+  entry: Entry,
+  busy: boolean,
+  handlers: {
+    onDuplicate: (id: string) => void
+    onExportEntry: (id: string) => void
+    onDelete: (entry: Entry) => void
+  },
+): OverflowMenuItem[] {
+  const copyItems: OverflowMenuItem[] =
+    entry.kind === 'general'
+      ? [
+          {
+            id: 'copy-prompt',
+            label: 'Prompt kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopyPromptBody(entry.promptBody)),
+          },
+          {
+            id: 'copy-role',
+            label: 'Rolle kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopySystemRole(entry.systemRole)),
+          },
+          {
+            id: 'copy-usage',
+            label: 'Anwendung kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopyUsageGuide(entry.usageGuide)),
+          },
+          {
+            id: 'copy-all',
+            label: 'Alles kopieren',
+            disabled: busy,
+            onSelect: () =>
+              void copyText(
+                formatCopyGeneralAll(entry.systemRole, entry.usageGuide, entry.promptBody),
+              ),
+          },
+        ]
+      : [
+          {
+            id: 'copy-style',
+            label: 'Style kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopyStyle(entry.stylePrompt)),
+          },
+          {
+            id: 'copy-lyrics',
+            label: 'Lyrics kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopyLyrics(entry.lyrics)),
+          },
+          {
+            id: 'copy-both',
+            label: 'Beides kopieren',
+            disabled: busy,
+            onSelect: () => void copyText(formatCopyBoth(entry.stylePrompt, entry.lyrics)),
+          },
+        ]
+
+  return [
+    {
+      id: 'duplicate',
+      label: 'Duplizieren',
+      disabled: busy,
+      onSelect: () => handlers.onDuplicate(entry.id),
+    },
+    {
+      id: 'export',
+      label: 'Export',
+      disabled: busy,
+      onSelect: () => handlers.onExportEntry(entry.id),
+    },
+    {
+      id: 'delete',
+      label: 'Löschen',
+      danger: true,
+      disabled: busy,
+      onSelect: () => handlers.onDelete(entry),
+    },
+    ...copyItems,
+  ]
 }
 
 export function LibraryList({
@@ -44,13 +137,18 @@ export function LibraryList({
   error,
   filtered,
   busy = false,
+  selecting = false,
+  selectedGroupIds,
   onSelect,
+  onToggleGroup,
   onDelete,
+  onDuplicate,
+  onExportEntry,
 }: LibraryListProps): JSX.Element {
   const groups = groupEntriesForDisplay(entries)
 
   return (
-    <nav className="library" aria-label="Bibliothek">
+    <nav className={selecting ? 'library is-selecting' : 'library'} aria-label="Bibliothek">
       {error ? (
         <p className="list-message" role="alert">
           {error}
@@ -70,16 +168,33 @@ export function LibraryList({
             const rating = Math.max(...group.versions.map((entry) => entry.rating)) as Entry['rating']
             const hasAudio = group.versions.some((entry) => entry.audio !== null)
             const kind = group.representative.kind
-            const deleteTarget =
+            const actionTarget =
               group.versions.find((entry) => entry.id === selectedId) ?? group.representative
+            const checked = selectedGroupIds?.has(group.key) ?? false
             return (
               <li key={group.key} className={active ? 'group is-active' : 'group'}>
                 <div className="group-row">
+                  {selecting ? (
+                    <label className="group-select">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        aria-label={`„${group.representative.title}“ auswählen`}
+                        onChange={() => onToggleGroup?.(group.key)}
+                      />
+                    </label>
+                  ) : null}
                   <button
                     type="button"
                     className="group-main"
                     aria-current={active && !showChips ? 'true' : undefined}
-                    onClick={() => onSelect(group.representative.id)}
+                    onClick={() => {
+                      if (selecting) {
+                        onToggleGroup?.(group.key)
+                        return
+                      }
+                      onSelect(group.representative.id)
+                    }}
                   >
                     {kind === 'suno' ? <CoverThumb entry={group.representative} /> : null}
                     <span
@@ -99,16 +214,18 @@ export function LibraryList({
                       </span>
                     ) : null}
                   </button>
-                  <button
-                    type="button"
-                    className="group-delete"
-                    disabled={busy}
-                    aria-label={`„${deleteTarget.title}“ löschen`}
-                    title="Löschen"
-                    onClick={() => onDelete(deleteTarget)}
-                  >
-                    <TrashIcon />
-                  </button>
+                  {!selecting ? (
+                    <OverflowMenu
+                      label={`Aktionen für „${actionTarget.title}“`}
+                      disabled={busy}
+                      onOpen={() => onSelect(actionTarget.id)}
+                      items={menuItemsFor(actionTarget, busy, {
+                        onDuplicate,
+                        onExportEntry,
+                        onDelete,
+                      })}
+                    />
+                  ) : null}
                 </div>
                 {showChips ? (
                   <div className="chips" role="group" aria-label={`Versionen von ${group.representative.title}`}>
@@ -118,6 +235,7 @@ export function LibraryList({
                         type="button"
                         className={entry.id === selectedId ? 'chip is-active' : 'chip'}
                         aria-pressed={entry.id === selectedId}
+                        disabled={selecting}
                         onClick={() => onSelect(entry.id)}
                       >
                         V{entry.version}

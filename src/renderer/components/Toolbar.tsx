@@ -13,7 +13,6 @@ interface ToolbarProps {
   onFacet: (facet: LibraryFacet) => void
   onKind: (kind: KindFilter) => void
   onSort: (sort: SortMode) => void
-  onCreate: () => void
   onImport: () => void
   onExport: () => void
   onAutoBackup?: () => void
@@ -32,7 +31,6 @@ export function Toolbar({
   onFacet,
   onKind,
   onSort,
-  onCreate,
   onImport,
   onExport,
   onAutoBackup,
@@ -91,8 +89,8 @@ export function Toolbar({
               aria-label="Tag"
               value={tagValue}
               onChange={(event) => {
-                const tag = event.target.value
-                onFacet(tag ? { tag } : 'all')
+                const value = event.target.value
+                onFacet(value ? { tag: value } : 'all')
               }}
             >
               <option value="">Alle Tags</option>
@@ -114,9 +112,6 @@ export function Toolbar({
           </div>
         </div>
         <div className="toolbar-actions">
-          <button type="button" className="btn btn-primary" disabled={busy} onClick={onCreate}>
-            Neu
-          </button>
           <button
             type="button"
             className={
