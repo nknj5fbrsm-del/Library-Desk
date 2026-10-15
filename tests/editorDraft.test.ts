@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyExternalEntry, sameEditorDraft, type EditorDraftFields } from '../src/shared/editorDraft'
+import {
+  applyExternalEntry,
+  preferLiveTitle,
+  sameEditorDraft,
+  type EditorDraftFields,
+} from '../src/shared/editorDraft'
 import { normalizePublishLinks } from '../src/shared/types'
 
 const current: EditorDraftFields = {
@@ -22,6 +27,16 @@ const imported: EditorDraftFields = {
   tags: ['tag'],
 }
 
+describe('preferLiveTitle', () => {
+  it('keeps trailing spaces when save only trimmed', () => {
+    expect(preferLiveTitle('Zwei Worte ', 'Zwei Worte')).toBe('Zwei Worte ')
+  })
+
+  it('adopts a real title change from the library', () => {
+    expect(preferLiveTitle('Alt', 'Neu')).toBe('Neu')
+  })
+})
+
 describe('applyExternalEntry', () => {
   it('adopts the library row when the editor is clean', () => {
     expect(applyExternalEntry(current, imported, false)).toEqual(imported)
@@ -34,6 +49,12 @@ describe('applyExternalEntry', () => {
   it('keeps the same draft object when the row matches', () => {
     const incoming = { ...current, tags: [...current.tags] }
     expect(applyExternalEntry(current, incoming, false)).toBe(current)
+  })
+
+  it('keeps typed title spaces after clean autosave reload', () => {
+    const typing = { ...current, title: 'Zwei Worte ' }
+    const saved = { ...current, title: 'Zwei Worte' }
+    expect(applyExternalEntry(typing, saved, false)).toEqual(typing)
   })
 })
 

@@ -1,3 +1,4 @@
+import { normalizeTitle } from './title'
 import type { PublishLink, StarRating } from './types'
 import { normalizePublishLinks } from './types'
 
@@ -46,12 +47,27 @@ export function sameEditorDraft(a: EditorDraftFields, b: EditorDraftFields): boo
   )
 }
 
+/**
+ * Keep the typed title when the library row only differs by trim/sentinel
+ * (`normalizeTitle`). Otherwise autosave reload would eat the space between words.
+ */
+export function preferLiveTitle(draftTitle: string, incomingTitle: string): string {
+  if (draftTitle === incomingTitle) return draftTitle
+  if (normalizeTitle(draftTitle) === normalizeTitle(incomingTitle)) return draftTitle
+  return incomingTitle
+}
+
 /** Keep unsaved edits. Otherwise adopt the library row after import or reload. */
 export function applyExternalEntry<T extends EditorDraftFields>(
   current: T,
   incoming: T,
   dirty: boolean,
 ): T {
-  if (dirty || sameEditorDraft(current, incoming)) return current
-  return incoming
+  if (dirty) return current
+  const merged = {
+    ...incoming,
+    title: preferLiveTitle(current.title, incoming.title),
+  } as T
+  if (sameEditorDraft(current, merged)) return current
+  return merged
 }
